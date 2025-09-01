@@ -6,6 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		105C24252E662195009C461C /* Poppins-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C24222E662195009C461C /* Poppins-Regular.ttf */; };
+		105C24262E662195009C461C /* Poppins-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C24232E662195009C461C /* Poppins-SemiBold.ttf */; };
+		105C24272E662195009C461C /* Poppins-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C24202E662195009C461C /* Poppins-Medium.ttf */; };
+		105C24282E662195009C461C /* Poppins-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C24242E662195009C461C /* Poppins-SemiBoldItalic.ttf */; };
+		105C24292E662195009C461C /* Poppins-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C24212E662195009C461C /* Poppins-MediumItalic.ttf */; };
+		105C242A2E662195009C461C /* Poppins-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C241E2E662195009C461C /* Poppins-Light.ttf */; };
+		105C242B2E662195009C461C /* Poppins-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C241D2E662195009C461C /* Poppins-Italic.ttf */; };
+		105C242C2E662195009C461C /* Poppins-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 105C241F2E662195009C461C /* Poppins-LightItalic.ttf */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		105C23FF2E661D58009C461C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,11 +38,32 @@
 		105C23F12E661D57009C461C /* CadenceLifeInMusic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CadenceLifeInMusic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		105C23FE2E661D58009C461C /* CadenceLifeInMusicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CadenceLifeInMusicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		105C24082E661D58009C461C /* CadenceLifeInMusicUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CadenceLifeInMusicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		105C241D2E662195009C461C /* Poppins-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-Italic.ttf"; sourceTree = "<group>"; };
+		105C241E2E662195009C461C /* Poppins-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-Light.ttf"; sourceTree = "<group>"; };
+		105C241F2E662195009C461C /* Poppins-LightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-LightItalic.ttf"; sourceTree = "<group>"; };
+		105C24202E662195009C461C /* Poppins-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-Medium.ttf"; sourceTree = "<group>"; };
+		105C24212E662195009C461C /* Poppins-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-MediumItalic.ttf"; sourceTree = "<group>"; };
+		105C24222E662195009C461C /* Poppins-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-Regular.ttf"; sourceTree = "<group>"; };
+		105C24232E662195009C461C /* Poppins-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-SemiBold.ttf"; sourceTree = "<group>"; };
+		105C24242E662195009C461C /* Poppins-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Poppins-SemiBoldItalic.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		105C242E2E6623B6009C461C /* Exceptions for "CadenceLifeInMusic" folder in "CadenceLifeInMusic" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 105C23F02E661D57009C461C /* CadenceLifeInMusic */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		105C23F32E661D57009C461C /* CadenceLifeInMusic */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				105C242E2E6623B6009C461C /* Exceptions for "CadenceLifeInMusic" folder in "CadenceLifeInMusic" target */,
+			);
 			path = CadenceLifeInMusic;
 			sourceTree = "<group>";
 		};
@@ -75,6 +107,7 @@
 		105C23E82E661D57009C461C = {
 			isa = PBXGroup;
 			children = (
+				105C241B2E662101009C461C /* Resources */,
 				105C23F32E661D57009C461C /* CadenceLifeInMusic */,
 				105C24012E661D58009C461C /* CadenceLifeInMusicTests */,
 				105C240B2E661D58009C461C /* CadenceLifeInMusicUITests */,
@@ -90,6 +123,29 @@
 				105C24082E661D58009C461C /* CadenceLifeInMusicUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		105C241B2E662101009C461C /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				105C241C2E66210C009C461C /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		105C241C2E66210C009C461C /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				105C241D2E662195009C461C /* Poppins-Italic.ttf */,
+				105C241E2E662195009C461C /* Poppins-Light.ttf */,
+				105C241F2E662195009C461C /* Poppins-LightItalic.ttf */,
+				105C24202E662195009C461C /* Poppins-Medium.ttf */,
+				105C24212E662195009C461C /* Poppins-MediumItalic.ttf */,
+				105C24222E662195009C461C /* Poppins-Regular.ttf */,
+				105C24232E662195009C461C /* Poppins-SemiBold.ttf */,
+				105C24242E662195009C461C /* Poppins-SemiBoldItalic.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -212,6 +268,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				105C24252E662195009C461C /* Poppins-Regular.ttf in Resources */,
+				105C24262E662195009C461C /* Poppins-SemiBold.ttf in Resources */,
+				105C24272E662195009C461C /* Poppins-Medium.ttf in Resources */,
+				105C24282E662195009C461C /* Poppins-SemiBoldItalic.ttf in Resources */,
+				105C24292E662195009C461C /* Poppins-MediumItalic.ttf in Resources */,
+				105C242A2E662195009C461C /* Poppins-Light.ttf in Resources */,
+				105C242B2E662195009C461C /* Poppins-Italic.ttf in Resources */,
+				105C242C2E662195009C461C /* Poppins-LightItalic.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -400,6 +464,7 @@
 				DEVELOPMENT_TEAM = 4M8B2Q4NM4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CadenceLifeInMusic/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +493,7 @@
 				DEVELOPMENT_TEAM = 4M8B2Q4NM4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CadenceLifeInMusic/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
