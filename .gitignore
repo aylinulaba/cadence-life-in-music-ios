@@ -61,11 +61,8 @@ Pods/
 # Carthage
 #
 # Add this line if you want to avoid checking in source code from Carthage dependencies.
+Carthage/Checkouts
 Carthage/Build/
-
-# Accio dependency management
-Dependencies/
-.accio/
 
 # fastlane
 #
@@ -78,6 +75,7 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/README.md
 
 # Code Injection
 #
@@ -86,7 +84,14 @@ fastlane/test_output
 
 iOSInjectionProject/
 
-# OS files
+# Secrets & Environment Variables
+*.xcconfig
+!Config/Base.xcconfig
+.env
+.env.*
+secrets/
+
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -110,16 +115,32 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Secrets and local config
-*.env
-.env.*
-!.env.example
-
-# Editor configs
-.vscode/
-.idea/
+# SPM - Package.resolved should be checked in for applications
+# but not for frameworks/libraries
+# Package.resolved
 
 # Backup files
-*~
+*~.nib
 *.swp
-*.swo
+*~
+*.bak
+*.orig
+
+# Test Coverage
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# Sentry
+sentry.properties
+
+# TelemetryDeck
+telemetry-config.json
+
+# Firebase (if used instead of TelemetryDeck)
+GoogleService-Info.plist
+
+# Local config overrides
+Config/Local.xcconfig
+EOF
