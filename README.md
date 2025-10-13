@@ -59,7 +59,7 @@ CadenceLifeInMusic/
 ### Prerequisites
 
 - **Xcode 15.0+**
-- **iOS 16.0+ Simulator or Device**
+- **iOS 17.0+ Simulator or Device**
 - **Apple Developer Account** (for Game Center & TestFlight)
 - **Supabase Project** (see [Backend Setup](docs/guides/backend-setup.md))
 
