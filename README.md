@@ -67,5 +67,5 @@ CadenceLifeInMusic/
 
 1. **Clone the repository**:
 ```bash
-   git clone https://github.com/lunae-studio/cadence-life-in-music-ios.git
+   git clone https://github.com/aylinulaba/cadence-life-in-music-ios.git
    cd cadence-life-in-music-ios
