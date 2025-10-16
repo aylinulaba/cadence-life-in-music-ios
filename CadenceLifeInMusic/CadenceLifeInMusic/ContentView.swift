@@ -4,15 +4,16 @@ import CadenceUI
 
 struct ContentView: View {
     @State private var hasCompletedOnboarding = false
-    @State private var currentPlayer: Player?
+    @State private var gameStateViewModel: GameStateViewModel?
     
     var body: some View {
         Group {
-            if hasCompletedOnboarding, let player = currentPlayer {
-                HomeView(player: player)
+            if hasCompletedOnboarding, let viewModel = gameStateViewModel {
+                HomeView(viewModel: viewModel)
             } else {
                 OnboardingView(onComplete: { player in
-                    currentPlayer = player
+                    let gameState = GameState.new(player: player)
+                    gameStateViewModel = GameStateViewModel(gameState: gameState)
                     hasCompletedOnboarding = true
                 })
             }

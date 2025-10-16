@@ -22,3 +22,9 @@ public extension Color {
     static let cardBackground = Color(uiColor: .secondarySystemBackground)
     static let divider = Color(uiColor: .separator)
 }
+
+// MARK: - ShapeStyle Extension
+public extension ShapeStyle where Self == Color {
+    static var cadencePrimary: Color { Color.cadencePrimary }
+    static var cadenceAccent: Color { Color.cadenceAccent }
+}

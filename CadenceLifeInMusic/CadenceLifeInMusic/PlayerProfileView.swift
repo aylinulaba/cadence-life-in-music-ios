@@ -3,7 +3,11 @@ import CadenceCore
 import CadenceUI
 
 struct PlayerProfileView: View {
-    let player: Player
+    let viewModel: GameStateViewModel
+    
+    var player: Player {
+        viewModel.gameState.player
+    }
     
     var body: some View {
         NavigationStack {
@@ -56,6 +60,7 @@ struct PlayerProfileView: View {
                             color: .cadencePrimary
                         )
                     }
+                    .id(viewModel.refreshTrigger)
                     
                     // Status Indicators
                     VStack(alignment: .leading, spacing: Spacing.md) {
@@ -82,6 +87,26 @@ struct PlayerProfileView: View {
                         .background(Color.cardBackground)
                         .cornerRadius(12)
                     }
+                    .id(viewModel.refreshTrigger)
+                    
+                    // Skills Section
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Text("Skills")
+                            .font(.cadenceHeadline)
+                            .padding(.horizontal, Spacing.md)
+                        
+                        VStack(spacing: Spacing.sm) {
+                            ForEach(Skill.SkillType.allCases, id: \.self) { skillType in
+                                if let skill = viewModel.skill(for: skillType) {
+                                    SkillRow(skill: skill)
+                                }
+                            }
+                        }
+                        .padding(Spacing.md)
+                        .background(Color.cardBackground)
+                        .cornerRadius(12)
+                    }
+                    .id(viewModel.refreshTrigger)
                     
                     Spacer()
                 }
@@ -141,13 +166,53 @@ struct StatusRow: View {
     }
 }
 
+// MARK: - Skill Row Component
+struct SkillRow: View {
+    let skill: Skill
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(skill.skillType.emoji)
+                    .font(.title3)
+                
+                Text(skill.skillType.displayName)
+                    .font(.cadenceBody)
+                
+                Spacer()
+                
+                Text("Lv \(skill.currentLevel)")
+                    .font(.cadenceBodyBold)
+                    .foregroundStyle(.cadencePrimary)
+            }
+            
+            HStack {
+                ProgressBar(
+                    progress: skill.progressToNextLevel,
+                    color: .cadencePrimary,
+                    height: 6
+                )
+                
+                Text("\(skill.currentXP) XP")
+                    .font(.cadenceCaption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, Spacing.xs)
+    }
+}
+
 #Preview {
-    PlayerProfileView(player: Player(
+    let player = Player(
         name: "Demo Artist",
         gender: .nonBinary,
         avatarID: "default",
         currentCityID: City.losAngeles.id,
         health: 75,
         mood: 85
-    ))
+    )
+    let gameState = GameState.new(player: player)
+    let viewModel = GameStateViewModel(gameState: gameState)
+    
+    return PlayerProfileView(viewModel: viewModel)
 }
