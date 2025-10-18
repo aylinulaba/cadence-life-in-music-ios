@@ -973,21 +973,275 @@ struct ReleaseCard: View {
     }
 }
 
+// MARK: - Gigs Tab
 struct GigsTabView: View {
     let viewModel: GameStateViewModel
+    @State private var showingBookGig = false
+    
+    var upcomingGigs: [Gig] {
+        viewModel.upcomingGigs
+    }
+    
+    var completedGigs: [Gig] {
+        viewModel.completedGigs
+    }
     
     var body: some View {
         ScrollView {
-            VStack {
-                Image(systemName: "music.mic")
-                    .font(.system(size: 60))
+            VStack(spacing: Spacing.lg) {
+                // Book Gig Button
+                Button(action: { showingBookGig = true }) {
+                    HStack {
+                        Image(systemName: "calendar.badge.plus")
+                        Text("Book Gig")
+                    }
+                    .font(.cadenceBodyBold)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(Spacing.md)
+                    .background(Color.cadencePrimary)
+                    .cornerRadius(12)
+                }
+                
+                // Upcoming Gigs
+                if !upcomingGigs.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text("Upcoming Gigs")
+                            .font(.cadenceHeadline)
+                            .padding(.horizontal, Spacing.md)
+                        
+                        ForEach(upcomingGigs) { gig in
+                            UpcomingGigCard(gig: gig, viewModel: viewModel)
+                        }
+                    }
+                }
+                
+                // Completed Gigs
+                if !completedGigs.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text("Past Performances")
+                            .font(.cadenceHeadline)
+                            .padding(.horizontal, Spacing.md)
+                        
+                        ForEach(completedGigs.prefix(10)) { gig in
+                            CompletedGigCard(gig: gig, viewModel: viewModel)
+                        }
+                    }
+                }
+                
+                // Empty State
+                if upcomingGigs.isEmpty && completedGigs.isEmpty {
+                    VStack(spacing: Spacing.md) {
+                        Image(systemName: "music.mic")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.secondary)
+                        Text("No Gigs Yet")
+                            .font(.cadenceHeadline)
+                        Text("Book your first gig to perform live!")
+                            .font(.cadenceBody)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(Spacing.xl)
+                }
+            }
+            .padding(Spacing.lg)
+        }
+        .sheet(isPresented: $showingBookGig) {
+            BookGigView(viewModel: viewModel, isPresented: $showingBookGig)
+        }
+    }
+}
+
+// MARK: - Upcoming Gig Card
+struct UpcomingGigCard: View {
+    let gig: Gig
+    let viewModel: GameStateViewModel
+    
+    var venue: Venue? {
+        Venue.venues.first { $0.id == gig.venueID }
+    }
+    
+    var setlist: Setlist? {
+        viewModel.setlist(for: gig.setlistID)
+    }
+    
+    var timeUntil: String {
+        let interval = gig.scheduledAt.timeIntervalSinceNow
+        let minutes = Int(interval / 60)
+        let hours = minutes / 60
+        let days = hours / 24
+        
+        if days > 0 {
+            return "in \(days) day\(days == 1 ? "" : "s")"
+        } else if hours > 0 {
+            return "in \(hours) hour\(hours == 1 ? "" : "s")"
+        } else if minutes > 0 {
+            return "in \(minutes) minute\(minutes == 1 ? "" : "s")"
+        } else {
+            return "starting now!"
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Header
+            HStack {
+                if let venue = venue {
+                    Text(venue.venueType.emoji)
+                        .font(.title)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(venue.name)
+                            .font(.cadenceBodyBold)
+                        
+                        Text(venue.venueType.rawValue)
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("$\(gig.ticketPrice)")
+                        .font(.cadenceBodyBold)
+                        .foregroundStyle(.green)
+                    Text("per ticket")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Divider()
+            
+            // Details
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.blue)
+                Text(gig.scheduledAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.cadenceBody)
+                
+                Spacer()
+                
+                Text(timeUntil)
+                    .font(.cadenceCaption)
+                    .foregroundStyle(.orange)
+            }
+            
+            if let setlist = setlist {
+                HStack {
+                    Image(systemName: "music.note.list")
+                        .foregroundStyle(.purple)
+                    Text(setlist.name)
+                        .font(.cadenceBody)
+                }
+            }
+            
+            HStack {
+                Image(systemName: "info.circle")
                     .foregroundStyle(.secondary)
-                Text("Gigs")
-                    .font(.cadenceHeadline)
-                Text("Coming in next update")
+                Text("Performance will start automatically")
+                    .font(.cadenceCaption)
                     .foregroundStyle(.secondary)
             }
-            .padding()
+        }
+        .padding(Spacing.md)
+        .background(Color.cardBackground)
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Completed Gig Card
+struct CompletedGigCard: View {
+    let gig: Gig
+    let viewModel: GameStateViewModel
+    
+    var venue: Venue? {
+        Venue.venues.first { $0.id == gig.venueID }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Header
+            HStack {
+                if let venue = venue {
+                    Text(venue.venueType.emoji)
+                        .font(.title2)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(venue.name)
+                            .font(.cadenceBodyBold)
+                        
+                        Text(gig.scheduledAt.formatted(date: .abbreviated, time: .omitted))
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                if let quality = gig.performanceQuality {
+                    VStack(alignment: .trailing) {
+                        Text("Quality")
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                        Text("\(quality)")
+                            .font(.cadenceBodyBold)
+                            .foregroundStyle(qualityColor(quality))
+                    }
+                }
+            }
+            
+            // Stats
+            if let attendance = gig.attendance, let netPayout = gig.netPayout {
+                HStack(spacing: Spacing.lg) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Attendance")
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                        Text("\(attendance)")
+                            .font(.cadenceBody)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Earned")
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                        Text("$\(netPayout)")
+                            .font(.cadenceBody)
+                            .foregroundStyle(.green)
+                    }
+                    
+                    if let fameGained = gig.fameGained {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Fame")
+                                .font(.cadenceCaption)
+                                .foregroundStyle(.secondary)
+                            Text("+\(fameGained)")
+                                .font(.cadenceBody)
+                                .foregroundStyle(.purple)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+            }
+        }
+        .padding(Spacing.md)
+        .background(Color.cardBackground)
+        .cornerRadius(12)
+    }
+    
+    private func qualityColor(_ quality: Int) -> Color {
+        if quality >= 80 {
+            return .green
+        } else if quality >= 60 {
+            return .blue
+        } else if quality >= 40 {
+            return .orange
+        } else {
+            return .red
         }
     }
 }

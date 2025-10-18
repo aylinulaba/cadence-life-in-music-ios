@@ -38,7 +38,7 @@ extension Setlist {
     }
     
     public var isReady: Bool {
-        songCount >= 3 && quality >= 40
+        songCount >= 3 && quality >= 30
     }
     
     public var readinessStatus: String {
