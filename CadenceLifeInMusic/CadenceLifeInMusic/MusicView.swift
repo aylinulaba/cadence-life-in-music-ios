@@ -848,23 +848,128 @@ struct RecordingCard: View {
     }
 }
 
-// MARK: - Placeholder Tabs
+// MARK: - Releases Tab
 struct ReleasesTabView: View {
     let viewModel: GameStateViewModel
+    @State private var showingPublishRelease = false
+    
+    var releases: [Release] {
+        viewModel.releases.sorted { $0.releasedAt > $1.releasedAt }
+    }
     
     var body: some View {
         ScrollView {
-            VStack {
-                Image(systemName: "optical.disc")
-                    .font(.system(size: 60))
+            VStack(spacing: Spacing.lg) {
+                // Publish Release Button
+                Button(action: { showingPublishRelease = true }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Publish Release")
+                    }
+                    .font(.cadenceBodyBold)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(Spacing.md)
+                    .background(Color.cadencePrimary)
+                    .cornerRadius(12)
+                }
+                
+                // Releases List
+                if releases.isEmpty {
+                    VStack(spacing: Spacing.md) {
+                        Image(systemName: "optical.disc")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.secondary)
+                        Text("No Releases Yet")
+                            .font(.cadenceHeadline)
+                        Text("Publish your recordings as singles or albums!")
+                            .font(.cadenceBody)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(Spacing.xl)
+                } else {
+                    ForEach(releases) { release in
+                        ReleaseCard(release: release, viewModel: viewModel)
+                    }
+                }
+            }
+            .padding(Spacing.lg)
+        }
+        .sheet(isPresented: $showingPublishRelease) {
+            PublishReleaseView(viewModel: viewModel, isPresented: $showingPublishRelease)
+        }
+    }
+}
+
+// MARK: - Release Card
+struct ReleaseCard: View {
+    let release: Release
+    let viewModel: GameStateViewModel
+    
+    var recordings: [Recording] {
+        release.recordingIDs.compactMap { viewModel.gameState.recording(for: $0) }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Header
+            HStack {
+                Text(release.type.emoji)
+                    .font(.title)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(release.title)
+                        .font(.cadenceBodyBold)
+                    
+                    HStack {
+                        Text(release.type.rawValue)
+                        Text("•")
+                        Text("\(recordings.count) track\(recordings.count == 1 ? "" : "s")")
+                    }
+                    .font(.cadenceCaption)
                     .foregroundStyle(.secondary)
-                Text("Releases")
-                    .font(.cadenceHeadline)
-                Text("Coming in next update")
+                }
+                
+                Spacer()
+            }
+            
+            Divider()
+            
+            // Stats
+            HStack(spacing: Spacing.xl) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Plays")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                    Text("\(release.totalPlays)")
+                        .font(.cadenceBodyBold)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Revenue")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                    Text("$\(release.totalRevenue)")
+                        .font(.cadenceBodyBold)
+                        .foregroundStyle(.green)
+                }
+                
+                Spacer()
+            }
+            
+            // Release Date
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.secondary)
+                Text("Released \(release.releasedAt.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.cadenceCaption)
                     .foregroundStyle(.secondary)
             }
-            .padding()
         }
+        .padding(Spacing.md)
+        .background(Color.cardBackground)
+        .cornerRadius(12)
     }
 }
 
