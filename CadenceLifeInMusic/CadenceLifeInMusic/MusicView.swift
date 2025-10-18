@@ -95,7 +95,7 @@ struct TabButton: View {
     }
 }
 
-// MARK: - Activities Tab (Existing)
+// MARK: - Activities Tab
 struct ActivitiesTabView: View {
     let viewModel: GameStateViewModel
     @State private var showingActivityPicker = false
@@ -704,26 +704,151 @@ struct RehearsalView: View {
     }
 }
 
-// MARK: - Placeholder Tabs
+// MARK: - Recordings Tab
 struct RecordingsTabView: View {
     let viewModel: GameStateViewModel
+    @State private var showingRecordSong = false
+    
+    var recordings: [Recording] {
+        viewModel.recordings.sorted { $0.recordedAt > $1.recordedAt }
+    }
     
     var body: some View {
         ScrollView {
-            VStack {
-                Image(systemName: "waveform")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Recordings")
-                    .font(.cadenceHeadline)
-                Text("Coming in next update")
-                    .foregroundStyle(.secondary)
+            VStack(spacing: Spacing.lg) {
+                // Record Song Button
+                Button(action: { showingRecordSong = true }) {
+                    HStack {
+                        Image(systemName: "waveform.circle.fill")
+                        Text("Record Song")
+                    }
+                    .font(.cadenceBodyBold)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(Spacing.md)
+                    .background(Color.cadencePrimary)
+                    .cornerRadius(12)
+                }
+                
+                // Recordings List
+                if recordings.isEmpty {
+                    VStack(spacing: Spacing.md) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.secondary)
+                        Text("No Recordings Yet")
+                            .font(.cadenceHeadline)
+                        Text("Record your songs to release them!")
+                            .font(.cadenceBody)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(Spacing.xl)
+                } else {
+                    ForEach(recordings) { recording in
+                        RecordingCard(recording: recording, viewModel: viewModel)
+                    }
+                }
             }
-            .padding()
+            .padding(Spacing.lg)
+        }
+        .sheet(isPresented: $showingRecordSong) {
+            RecordSongView(viewModel: viewModel, isPresented: $showingRecordSong)
         }
     }
 }
 
+// MARK: - Recording Card
+struct RecordingCard: View {
+    let recording: Recording
+    let viewModel: GameStateViewModel
+    
+    var song: Song? {
+        viewModel.gameState.song(for: recording.songID)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Header
+            HStack {
+                Text(recording.studioTier.emoji)
+                    .font(.title)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    if let song = song {
+                        Text(song.title)
+                            .font(.cadenceBodyBold)
+                        
+                        HStack {
+                            Text(song.genre.rawValue)
+                            Text("•")
+                            Text(recording.studioTier.rawValue)
+                        }
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                    } else {
+                        Text("Unknown Song")
+                            .font(.cadenceBodyBold)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("Quality")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("\(recording.quality)")
+                        .font(.cadenceHeadline)
+                        .foregroundStyle(qualityColor(recording.quality))
+                }
+            }
+            
+            // Status
+            HStack {
+                if recording.isReleased {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Released")
+                        .font(.cadenceCaption)
+                } else {
+                    Image(systemName: "circle.fill")
+                        .foregroundStyle(.blue)
+                    Text("Ready to release")
+                        .font(.cadenceCaption)
+                }
+            }
+            
+            // Date
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.secondary)
+                Text("Recorded \(recording.recordedAt.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.cadenceCaption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(Spacing.md)
+        .background(Color.cardBackground)
+        .cornerRadius(12)
+    }
+    
+    private func qualityColor(_ quality: Int) -> Color {
+        if quality >= 80 {
+            return .green
+        } else if quality >= 60 {
+            return .blue
+        } else if quality >= 40 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+}
+
+// MARK: - Placeholder Tabs
 struct ReleasesTabView: View {
     let viewModel: GameStateViewModel
     
