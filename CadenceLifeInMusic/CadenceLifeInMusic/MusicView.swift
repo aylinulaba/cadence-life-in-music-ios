@@ -343,26 +343,368 @@ struct CreateSongView: View {
     }
 }
 
-// MARK: - Placeholder Tabs (We'll implement these next)
+// MARK: - Setlists Tab
 struct SetlistsTabView: View {
     let viewModel: GameStateViewModel
+    @State private var showingCreateSetlist = false
+    
+    var setlists: [Setlist] {
+        viewModel.setlists.sorted { $0.updatedAt > $1.updatedAt }
+    }
     
     var body: some View {
         ScrollView {
-            VStack {
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Setlists")
-                    .font(.cadenceHeadline)
-                Text("Coming in next update")
-                    .foregroundStyle(.secondary)
+            VStack(spacing: Spacing.lg) {
+                // Create Setlist Button
+                Button(action: { showingCreateSetlist = true }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Create Setlist")
+                    }
+                    .font(.cadenceBodyBold)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(Spacing.md)
+                    .background(Color.cadencePrimary)
+                    .cornerRadius(12)
+                }
+                
+                // Setlists List
+                if setlists.isEmpty {
+                    VStack(spacing: Spacing.md) {
+                        Image(systemName: "music.note.list")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.secondary)
+                        Text("No Setlists Yet")
+                            .font(.cadenceHeadline)
+                        Text("Create a setlist to prepare for gigs!")
+                            .font(.cadenceBody)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(Spacing.xl)
+                } else {
+                    ForEach(setlists) { setlist in
+                        SetlistCard(setlist: setlist, viewModel: viewModel)
+                    }
+                }
             }
-            .padding()
+            .padding(Spacing.lg)
+        }
+        .sheet(isPresented: $showingCreateSetlist) {
+            CreateSetlistView(viewModel: viewModel, isPresented: $showingCreateSetlist)
         }
     }
 }
 
+// MARK: - Setlist Card
+struct SetlistCard: View {
+    let setlist: Setlist
+    let viewModel: GameStateViewModel
+    @State private var showingRehearsal = false
+    
+    var songs: [Song] {
+        setlist.songIDs.compactMap { viewModel.gameState.song(for: $0) }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(setlist.name)
+                        .font(.cadenceBodyBold)
+                    
+                    Text("\(setlist.songCount) songs")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("Quality")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("\(setlist.quality)")
+                        .font(.cadenceHeadline)
+                        .foregroundStyle(qualityColor)
+                }
+            }
+            
+            // Readiness Status
+            HStack {
+                Image(systemName: setlist.isReady ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .foregroundStyle(setlist.isReady ? .green : .orange)
+                
+                Text(setlist.readinessStatus)
+                    .font(.cadenceCaption)
+            }
+            
+            // Rehearsal Info
+            if setlist.rehearsalHours > 0 {
+                HStack {
+                    Image(systemName: "clock.fill")
+                        .foregroundStyle(.blue)
+                    Text("\(Int(setlist.rehearsalHours)) hours rehearsed")
+                        .font(.cadenceCaption)
+                }
+            }
+            
+            Divider()
+            
+            // Songs Preview
+            if !songs.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Songs:")
+                        .font(.cadenceCaption)
+                        .foregroundStyle(.secondary)
+                    
+                    ForEach(songs.prefix(3)) { song in
+                        HStack(spacing: 4) {
+                            Text(song.genre.emoji)
+                            Text(song.title)
+                                .font(.cadenceCaption)
+                        }
+                    }
+                    
+                    if songs.count > 3 {
+                        Text("+ \(songs.count - 3) more")
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            
+            // Rehearse Button
+            Button(action: { showingRehearsal = true }) {
+                HStack {
+                    Image(systemName: "figure.dance")
+                    Text("Rehearse")
+                }
+                .font(.cadenceBodyBold)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.sm)
+                .background(Color.cadencePrimary)
+                .cornerRadius(8)
+            }
+        }
+        .padding(Spacing.md)
+        .background(Color.cardBackground)
+        .cornerRadius(12)
+        .sheet(isPresented: $showingRehearsal) {
+            RehearsalView(
+                viewModel: viewModel,
+                setlistID: setlist.id,
+                isPresented: $showingRehearsal
+            )
+        }
+    }
+    
+    private var qualityColor: Color {
+        if setlist.quality >= 80 {
+            return .green
+        } else if setlist.quality >= 60 {
+            return .blue
+        } else if setlist.quality >= 40 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+}
+
+// MARK: - Create Setlist View
+struct CreateSetlistView: View {
+    let viewModel: GameStateViewModel
+    @Binding var isPresented: Bool
+    
+    @State private var name = ""
+    @State private var selectedSongIDs: Set<UUID> = []
+    
+    var availableSongs: [Song] {
+        viewModel.unreleasedSongs
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Setlist Name") {
+                    TextField("Enter setlist name", text: $name)
+                }
+                
+                Section("Select Songs (min 3)") {
+                    if availableSongs.isEmpty {
+                        Text("No songs available. Write some songs first!")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(availableSongs) { song in
+                            Button(action: {
+                                if selectedSongIDs.contains(song.id) {
+                                    selectedSongIDs.remove(song.id)
+                                } else {
+                                    selectedSongIDs.insert(song.id)
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: selectedSongIDs.contains(song.id) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(selectedSongIDs.contains(song.id) ? .cadencePrimary : .secondary)
+                                    
+                                    Text(song.genre.emoji)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(song.title)
+                                            .font(.cadenceBody)
+                                            .foregroundStyle(.primary)
+                                        
+                                        HStack {
+                                            Text(song.genre.rawValue)
+                                            Text("•")
+                                            Text("Quality: \(song.quality)")
+                                        }
+                                        .font(.cadenceCaption)
+                                        .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Section {
+                    Button("Create Setlist") {
+                        viewModel.createSetlist(
+                            name: name,
+                            songIDs: Array(selectedSongIDs)
+                        )
+                        isPresented = false
+                    }
+                    .disabled(name.isEmpty || selectedSongIDs.count < 3)
+                }
+                
+                if selectedSongIDs.count < 3 {
+                    Section {
+                        Text("Select at least 3 songs to create a setlist")
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Create Setlist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Rehearsal View
+struct RehearsalView: View {
+    let viewModel: GameStateViewModel
+    let setlistID: UUID
+    @Binding var isPresented: Bool
+    
+    @State private var rehearsalHours: Double = 1.0
+    
+    var setlist: Setlist? {
+        viewModel.setlist(for: setlistID)
+    }
+    
+    var cost: Decimal {
+        0 // Rehearsal is free at home
+    }
+    
+    var xpGain: Int {
+        Int(rehearsalHours * 5)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Setlist") {
+                    if let setlist = setlist {
+                        HStack {
+                            Text(setlist.name)
+                                .font(.cadenceBodyBold)
+                            Spacer()
+                            Text("Quality: \(setlist.quality)")
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Text("\(setlist.songCount) songs • \(Int(setlist.rehearsalHours))h rehearsed")
+                            .font(.cadenceCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Section("Rehearsal Duration") {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        HStack {
+                            Text("\(Int(rehearsalHours)) hour\(rehearsalHours == 1 ? "" : "s")")
+                                .font(.cadenceBodyBold)
+                            Spacer()
+                        }
+                        
+                        Slider(value: $rehearsalHours, in: 1...8, step: 1)
+                    }
+                }
+                
+                Section("Benefits") {
+                    HStack {
+                        Text("Setlist Quality")
+                        Spacer()
+                        Text("+\(Int(rehearsalHours * 10)) (up to +40 max)")
+                            .foregroundStyle(.green)
+                    }
+                    
+                    HStack {
+                        Text("Performance XP")
+                        Spacer()
+                        Text("+\(xpGain)")
+                            .foregroundStyle(.blue)
+                    }
+                    
+                    HStack {
+                        Text("Cost")
+                        Spacer()
+                        Text("Free")
+                            .foregroundStyle(.green)
+                    }
+                }
+                
+                Section {
+                    Button("Start Rehearsal") {
+                        viewModel.rehearseSetlist(
+                            setlistID: setlistID,
+                            hours: rehearsalHours
+                        )
+                        isPresented = false
+                    }
+                }
+            }
+            .navigationTitle("Rehearse")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Placeholder Tabs
 struct RecordingsTabView: View {
     let viewModel: GameStateViewModel
     
