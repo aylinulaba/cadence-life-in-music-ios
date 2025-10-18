@@ -1,108 +1,78 @@
 import Foundation
 
-public struct Activity: Identifiable, Codable, Sendable {
-    public let id: UUID
-    public let type: ActivityType
-    public let name: String
-    public let description: String
-    public var startedAt: Date?
-    public var duration: TimeInterval // in seconds
+public enum Activity: Codable, Sendable {
+    case practice(instrument: Skill.SkillType)
+    case rest
+    case job(type: JobType)
+    case rehearsal(setlistID: UUID)
+    case gig(gigID: UUID)
+    
+    public enum JobType: String, Codable, Sendable {
+        case cashier = "Cashier"
+        case salesClerk = "Sales Clerk"
+        case barista = "Barista"
+        case waiter = "Waiter/Waitress"
+        
+        public var weeklySalary: Decimal {
+            switch self {
+            case .cashier: return 150
+            case .salesClerk: return 150
+            case .barista: return 175
+            case .waiter: return 200
+            }
+        }
+    }
+    
+    public var type: ActivityType {
+        switch self {
+        case .practice:
+            return .practice
+        case .rest:
+            return .rest
+        case .job:
+            return .job
+        case .rehearsal:
+            return .rehearsal
+        case .gig:
+            return .gig
+        }
+    }
+    
+    public var name: String {
+        switch self {
+        case .practice(let instrument):
+            return "Practice \(instrument.displayName)"
+        case .rest:
+            return "Rest"
+        case .job(let jobType):
+            return jobType.rawValue
+        case .rehearsal:
+            return "Rehearsal"
+        case .gig:
+            return "Performance"
+        }
+    }
+    
+    public var description: String {
+        switch self {
+        case .practice(let instrument):
+            return "Improve your \(instrument.displayName) skills. +10 XP/hour."
+        case .rest:
+            return "Recover health and mood. +10 Health, +5 Mood per hour."
+        case .job(let jobType):
+            return "Earn $\(jobType.weeklySalary)/week"
+        case .rehearsal:
+            return "Improve setlist quality"
+        case .gig:
+            return "Perform live"
+        }
+    }
     
     public enum ActivityType: String, Codable, Sendable {
-        case job
         case practice
         case rest
-        case songwriting
+        case job
         case rehearsal
-        case recording
         case gig
-        
-        public var icon: String {
-            switch self {
-            case .job: return "briefcase.fill"
-            case .practice: return "music.note"
-            case .rest: return "bed.double.fill"
-            case .songwriting: return "pencil.and.outline"
-            case .rehearsal: return "music.mic"
-            case .recording: return "waveform"
-            case .gig: return "sparkles"
-            }
-        }
-        
-        public var category: ActivityCategory {
-            switch self {
-            case .job: return .income
-            case .practice, .songwriting, .rehearsal: return .skill
-            case .rest: return .recovery
-            case .recording, .gig: return .performance
-            }
-        }
     }
-    
-    public enum ActivityCategory: String, Codable, Sendable {
-        case income
-        case skill
-        case recovery
-        case performance
-    }
-    
-    public init(
-        id: UUID = UUID(),
-        type: ActivityType,
-        name: String,
-        description: String,
-        startedAt: Date? = nil,
-        duration: TimeInterval = 0
-    ) {
-        self.id = id
-        self.name = name
-        self.type = type
-        self.description = description
-        self.startedAt = startedAt
-        self.duration = duration
-    }
-}
-
-// MARK: - Predefined Activities
-extension Activity {
-    // Jobs
-    public static let cashierJob = Activity(
-        type: .job,
-        name: "Cashier",
-        description: "Work at a supermarket. Earn $150/week."
-    )
-    
-    public static let baristaJob = Activity(
-        type: .job,
-        name: "Barista",
-        description: "Work at a coffee shop. Earn $180/week."
-    )
-    
-    public static let waiterJob = Activity(
-        type: .job,
-        name: "Waiter",
-        description: "Work at a restaurant. Earn $200/week."
-    )
-    
-    // Practice Activities
-    public static func practice(instrument: Skill.SkillType) -> Activity {
-        Activity(
-            type: .practice,
-            name: "Practice \(instrument.displayName)",
-            description: "Improve your \(instrument.displayName) skills. +10 XP/hour."
-        )
-    }
-    
-    // Rest
-    public static let rest = Activity(
-        type: .rest,
-        name: "Rest",
-        description: "Recover health and mood. +10 health/hour, +5 mood/hour."
-    )
-    
-    public static let allJobs: [Activity] = [
-        .cashierJob,
-        .baristaJob,
-        .waiterJob
-    ]
 }
