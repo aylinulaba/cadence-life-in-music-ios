@@ -2,62 +2,121 @@ import SwiftUI
 import CadenceCore
 
 struct ContentView: View {
-    @State private var testResult = ""
-    @State private var showAlert = false
+    @State private var gameState: GameState?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    
+    var body: some View {
+        Group {
+            if isLoading {
+                LoadingView()
+            } else if let error = errorMessage {
+                ErrorView(message: error) {
+                    Task {
+                        await authenticate()
+                    }
+                }
+            } else if let state = gameState {
+                MainGameView(gameState: state)
+            }
+        }
+        .task {
+            await authenticate()
+        }
+    }
+    
+    private func authenticate() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            print("🔐 Starting authentication...")
+            
+            let gameCenterID = try await AuthService.shared.authenticateWithGameCenter()
+            
+            let playerID = try await AuthService.shared.findOrCreatePlayer(
+                gameCenterID: gameCenterID,
+                defaultName: "Player"
+            )
+            
+            let loadedState = try await AuthService.shared.loadPlayerData(playerID: playerID)
+            
+            gameState = loadedState
+            isLoading = false
+            
+            print("✅ Authentication complete!")
+            
+        } catch {
+            print("❌ Authentication failed: \(error)")
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+}
+
+struct MainGameView: View {
+    let gameState: GameState
+    
+    var body: some View {
+        TabView {
+            Text("Profile - Coming Soon")
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+            
+            MusicView(viewModel: GameStateViewModel(gameState: gameState))
+                .tabItem {
+                    Label("Music", systemImage: "music.note")
+                }
+            
+            Text("Work - Coming Soon")
+                .tabItem {
+                    Label("Work", systemImage: "briefcase.fill")
+                }
+        }
+    }
+}
+
+struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            ProgressView()
+                .scaleEffect(1.5)
+            Text("Loading...")
+                .font(.headline)
+        }
+    }
+}
+
+struct ErrorView: View {
+    let message: String
+    let retry: () -> Void
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("Database Test")
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 60))
+                .foregroundColor(.red)
+            
+            Text("Error")
                 .font(.title)
             
-            Button("Test Database Connection") {
-                testDatabase()
+            Text(message)
+                .multilineTextAlignment(.center)
+                .padding()
+            
+            Button("Retry") {
+                retry()
             }
             .padding()
             .background(Color.blue)
             .foregroundColor(.white)
             .cornerRadius(8)
-            
-            if !testResult.isEmpty {
-                Text(testResult)
-                    .padding()
-                    .foregroundColor(testResult.contains("SUCCESS") ? .green : .red)
-            }
-            
-            Spacer()
         }
         .padding()
-        .alert("Test Result", isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(testResult)
-        }
     }
-    
-    private func testDatabase() {
-        testResult = "Testing..."
-        print("=== BUTTON PRESSED ===")
-        print("Starting test...")
-        
-        Task {
-            do {
-                print("About to call DatabaseService...")
-                try await DatabaseService.shared.testConnection()
-                
-                await MainActor.run {
-                    testResult = "SUCCESS: Database connected!"
-                    showAlert = true
-                }
-                print("=== TEST SUCCESS ===")
-                
-            } catch {
-                await MainActor.run {
-                    testResult = "FAILED: \(error.localizedDescription)"
-                    showAlert = true
-                }
-                print("=== TEST FAILED ===")
-                print("Error: \(error)")
-            }
-        }
-    }
+}
+
+#Preview {
+    ContentView()
 }
