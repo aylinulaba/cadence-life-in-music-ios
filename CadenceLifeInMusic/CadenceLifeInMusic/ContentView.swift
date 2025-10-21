@@ -69,7 +69,7 @@ struct MainGameView: View {
                     Label("Music", systemImage: "music.note")
                 }
             
-            Text("Work - Coming Soon")
+            WorkView(viewModel: GameStateViewModel(gameState: gameState))
                 .tabItem {
                     Label("Work", systemImage: "briefcase.fill")
                 }
