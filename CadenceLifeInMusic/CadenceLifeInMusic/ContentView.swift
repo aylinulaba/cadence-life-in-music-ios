@@ -59,7 +59,7 @@ struct MainGameView: View {
     
     var body: some View {
         TabView {
-            Text("Profile - Coming Soon")
+            ProfileView(viewModel: GameStateViewModel(gameState: gameState))
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
