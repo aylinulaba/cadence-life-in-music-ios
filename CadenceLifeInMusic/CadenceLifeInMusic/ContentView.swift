@@ -58,22 +58,7 @@ struct MainGameView: View {
     let gameState: GameState
     
     var body: some View {
-        TabView {
-            ProfileView(viewModel: GameStateViewModel(gameState: gameState))
-                .tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
-            
-            MusicView(viewModel: GameStateViewModel(gameState: gameState))
-                .tabItem {
-                    Label("Music", systemImage: "music.note")
-                }
-            
-            WorkView(viewModel: GameStateViewModel(gameState: gameState))
-                .tabItem {
-                    Label("Work", systemImage: "briefcase.fill")
-                }
-        }
+        HomeView(viewModel: GameStateViewModel(gameState: gameState))
     }
 }
 

@@ -312,7 +312,7 @@ final class DatabaseService {
         return []
     }
     
-    // MARK: - Job Payment Operations (NEW)
+    // MARK: - Job Payment Operations
     
     func fetchJobPayments(playerID: UUID) async throws -> [JobPayment] {
         print("Fetching job payments...")
@@ -414,6 +414,118 @@ final class DatabaseService {
             .execute()
         
         print("Job payment status updated")
+    }
+    
+    // MARK: - Equipment Operations (NEW)
+    
+    func fetchEquipment(playerID: UUID) async throws -> [Equipment] {
+        print("Fetching equipment...")
+        
+        struct EquipmentRow: Decodable {
+            let id: String
+            let owner_id: String
+            let equipment_type: String
+            let tier: String
+            let name: String
+            let base_price: Double
+            let durability: Int
+            let purchased_at: String
+        }
+        
+        let rows: [EquipmentRow] = try await client
+            .from("equipment")
+            .select()
+            .eq("owner_id", value: playerID.uuidString)
+            .execute()
+            .value
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        return rows.compactMap { row in
+            guard let id = UUID(uuidString: row.id),
+                  let ownerID = UUID(uuidString: row.owner_id),
+                  let equipmentType = Equipment.EquipmentType(rawValue: row.equipment_type),
+                  let tier = Equipment.EquipmentTier(rawValue: row.tier),
+                  let purchasedAt = dateFormatter.date(from: row.purchased_at) else {
+                return nil
+            }
+            
+            return Equipment(
+                id: id,
+                equipmentType: equipmentType,
+                tier: tier,
+                name: row.name,
+                basePrice: Decimal(row.base_price),
+                durability: row.durability,
+                purchasedAt: purchasedAt,
+                ownerID: ownerID
+            )
+        }
+    }
+    
+    func saveEquipment(_ equipment: Equipment) async throws {
+        print("Saving equipment...")
+        
+        struct EquipmentInsert: Encodable {
+            let id: String
+            let owner_id: String
+            let equipment_type: String
+            let tier: String
+            let name: String
+            let base_price: Double
+            let durability: Int
+            let purchased_at: String
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        let insert = EquipmentInsert(
+            id: equipment.id.uuidString,
+            owner_id: equipment.ownerID.uuidString,
+            equipment_type: equipment.equipmentType.rawValue,
+            tier: equipment.tier.rawValue,
+            name: equipment.name,
+            base_price: NSDecimalNumber(decimal: equipment.basePrice).doubleValue,
+            durability: equipment.durability,
+            purchased_at: dateFormatter.string(from: equipment.purchasedAt)
+        )
+        
+        try await client
+            .from("equipment")
+            .upsert(insert)
+            .execute()
+        
+        print("Equipment saved")
+    }
+    
+    func updateEquipmentDurability(equipmentID: UUID, durability: Int) async throws {
+        print("Updating equipment durability...")
+        
+        struct EquipmentUpdate: Encodable {
+            let durability: Int
+        }
+        
+        let update = EquipmentUpdate(durability: durability)
+        
+        try await client
+            .from("equipment")
+            .update(update)
+            .eq("id", value: equipmentID.uuidString)
+            .execute()
+        
+        print("Equipment durability updated")
+    }
+    
+    func deleteEquipment(equipmentID: UUID) async throws {
+        print("Deleting equipment...")
+        
+        try await client
+            .from("equipment")
+            .delete()
+            .eq("id", value: equipmentID.uuidString)
+            .execute()
+        
+        print("Equipment deleted")
     }
 }
 

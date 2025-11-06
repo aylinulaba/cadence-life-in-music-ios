@@ -1,8 +1,10 @@
 import Foundation
+import CadenceCore
 
 public final class IdleProgressionManager: Sendable {
     
     private let jobPaymentManager = JobPaymentManager()
+    private let equipmentManager = EquipmentManager()
     
     public init() {}
     
@@ -61,13 +63,28 @@ public final class IdleProgressionManager: Sendable {
             case .practice:
                 if let skillType = extractSkillType(from: activity),
                    var skill = gameState.skill(for: skillType) {
+                    
+                    // NEW: Get equipment bonus for this skill
+                    let equipmentBonus = equipmentManager.getBestEquipmentBonus(
+                        gameState: gameState,
+                        for: skillType
+                    )
+                    
                     let xpGain = calculateSkillXP(
                         activity: activity,
                         elapsedTime: elapsedTime,
-                        playerMood: player.mood
+                        playerMood: player.mood,
+                        equipmentBonus: equipmentBonus
                     )
                     skill.addXP(xpGain)
                     gameState.updateSkill(skill)
+                    
+                    // NEW: Degrade equipment after practice
+                    equipmentManager.degradeEquipmentAfterUse(
+                        gameState: &gameState,
+                        equipmentType: skillType.equipmentType,
+                        amount: 1
+                    )
                 }
             case .rest:
                 let recovery = calculateRecovery(
@@ -92,13 +109,28 @@ public final class IdleProgressionManager: Sendable {
             case .practice:
                 if let skillType = extractSkillType(from: activity),
                    var skill = gameState.skill(for: skillType) {
+                    
+                    // NEW: Get equipment bonus for this skill
+                    let equipmentBonus = equipmentManager.getBestEquipmentBonus(
+                        gameState: gameState,
+                        for: skillType
+                    )
+                    
                     let xpGain = calculateSkillXP(
                         activity: activity,
                         elapsedTime: elapsedTime,
-                        playerMood: player.mood
+                        playerMood: player.mood,
+                        equipmentBonus: equipmentBonus
                     )
                     skill.addXP(xpGain)
                     gameState.updateSkill(skill)
+                    
+                    // NEW: Degrade equipment after practice
+                    equipmentManager.degradeEquipmentAfterUse(
+                        gameState: &gameState,
+                        equipmentType: skillType.equipmentType,
+                        amount: 1
+                    )
                 }
             case .rest:
                 let recovery = calculateRecovery(
@@ -114,7 +146,7 @@ public final class IdleProgressionManager: Sendable {
             }
         }
         
-        // NEW: Process job payments
+        // Process job payments
         jobPaymentManager.processDuePayments(gameState: &gameState)
         
         gameState.player.lastSyncAt = currentTime
@@ -129,5 +161,22 @@ public final class IdleProgressionManager: Sendable {
             }
         }
         return nil
+    }
+}
+
+// MARK: - Skill Type Equipment Mapping
+
+extension Skill.SkillType {
+    /// The equipment type that boosts this skill
+    public var equipmentType: Equipment.EquipmentType {
+        switch self {
+        case .guitar: return .guitar
+        case .piano: return .piano
+        case .drums: return .drums
+        case .bass: return .bass
+        case .songwriting: return .guitar // Default to guitar for songwriting
+        case .performance: return .microphone
+        case .production: return .productionGear
+        }
     }
 }

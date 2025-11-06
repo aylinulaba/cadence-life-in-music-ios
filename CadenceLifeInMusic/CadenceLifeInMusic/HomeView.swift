@@ -20,17 +20,29 @@ struct HomeView: View {
                 }
                 .tag(1)
             
+            WorkView(viewModel: viewModel)
+                .tabItem {
+                    Label("Work", systemImage: "briefcase.fill")
+                }
+                .tag(2)
+            
+            EquipmentShopView(viewModel: viewModel)
+                .tabItem {
+                    Label("Equipment", systemImage: "bag.fill")
+                }
+                .tag(3)
+            
             EconomyView(viewModel: viewModel)
                 .tabItem {
                     Label("Economy", systemImage: "dollarsign.circle")
                 }
-                .tag(2)
+                .tag(4)
             
             SocialView()
                 .tabItem {
                     Label("Social", systemImage: "person.2.fill")
                 }
-                .tag(3)
+                .tag(5)
         }
     }
 }

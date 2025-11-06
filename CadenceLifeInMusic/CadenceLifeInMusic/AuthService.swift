@@ -97,7 +97,8 @@ final class AuthService {
         let recordings = try await DatabaseService.shared.fetchRecordings(playerID: playerID)
         let releases = try await DatabaseService.shared.fetchReleases(playerID: playerID)
         let gigs = try await DatabaseService.shared.fetchGigs(playerID: playerID)
-        let jobPayments = try await DatabaseService.shared.fetchJobPayments(playerID: playerID)  // NEW
+        let jobPayments = try await DatabaseService.shared.fetchJobPayments(playerID: playerID)
+        let equipment = try await DatabaseService.shared.fetchEquipment(playerID: playerID)  // NEW
         
         // Create time slots
         let primaryFocus = TimeSlot(
@@ -125,9 +126,10 @@ final class AuthService {
         gameState.recordings = recordings
         gameState.releases = releases
         gameState.gigs = gigs
-        gameState.jobPayments = jobPayments  // NEW
+        gameState.jobPayments = jobPayments
+        gameState.equipmentInventory = equipment  // NEW
         
-        // Calculate last job start date from payments if job is active (NEW)
+        // Calculate last job start date from payments if job is active
         if let currentJob = gameState.currentJob {
             // Find the earliest payment for current job
             let earliestPayment = jobPayments

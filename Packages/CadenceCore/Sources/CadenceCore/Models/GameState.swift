@@ -12,9 +12,12 @@ public struct GameState: Sendable {
     public var releases: [Release]
     public var gigs: [Gig]
     
-    // NEW: Job payment tracking
+    // Job payment tracking
     public var jobPayments: [JobPayment]
     public var lastJobStartDate: Date?
+    
+    // NEW: Equipment inventory
+    public var equipmentInventory: [Equipment]
     
     public init(
         player: Player,
@@ -28,7 +31,8 @@ public struct GameState: Sendable {
         releases: [Release],
         gigs: [Gig],
         jobPayments: [JobPayment],
-        lastJobStartDate: Date?
+        lastJobStartDate: Date?,
+        equipmentInventory: [Equipment]
     ) {
         self.player = player
         self.wallet = wallet
@@ -42,6 +46,7 @@ public struct GameState: Sendable {
         self.gigs = gigs
         self.jobPayments = jobPayments
         self.lastJobStartDate = lastJobStartDate
+        self.equipmentInventory = equipmentInventory
     }
     
     // MARK: - Job Payment Computed Properties
@@ -89,6 +94,47 @@ public struct GameState: Sendable {
             jobPayments[index].status = .paid
             jobPayments[index].paidDate = paidDate
         }
+    }
+    
+    // MARK: - Equipment Helpers (NEW)
+    
+    /// Get equipment by ID
+    public func equipment(for id: UUID) -> Equipment? {
+        equipmentInventory.first { $0.id == id }
+    }
+    
+    /// Get all usable equipment
+    public var usableEquipment: [Equipment] {
+        equipmentInventory.filter { $0.isUsable }
+    }
+    
+    /// Get equipment by type
+    public func equipment(ofType type: Equipment.EquipmentType) -> [Equipment] {
+        equipmentInventory.filter { $0.equipmentType == type }
+    }
+    
+    /// Get best equipment for a skill type
+    public func bestEquipment(for skillType: Skill.SkillType) -> Equipment? {
+        equipmentInventory
+            .filter { $0.equipmentType.relatedSkill == skillType && $0.isUsable }
+            .max { $0.performanceBonus < $1.performanceBonus }
+    }
+    
+    /// Add equipment to inventory
+    public mutating func addEquipment(_ equipment: Equipment) {
+        equipmentInventory.append(equipment)
+    }
+    
+    /// Update existing equipment
+    public mutating func updateEquipment(_ updatedEquipment: Equipment) {
+        if let index = equipmentInventory.firstIndex(where: { $0.id == updatedEquipment.id }) {
+            equipmentInventory[index] = updatedEquipment
+        }
+    }
+    
+    /// Remove equipment from inventory
+    public mutating func removeEquipment(_ equipmentID: UUID) {
+        equipmentInventory.removeAll { $0.id == equipmentID }
     }
     
     // MARK: - Skill Helpers
@@ -228,7 +274,8 @@ extension GameState {
             releases: [],
             gigs: [],
             jobPayments: [],
-            lastJobStartDate: nil
+            lastJobStartDate: nil,
+            equipmentInventory: []
         )
     }
 }

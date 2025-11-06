@@ -14,6 +14,7 @@ final class GameStateViewModel {
     private let releaseManager = ReleaseManager()
     private let gigManager = GigManager()
     private let jobPaymentManager = JobPaymentManager()
+    private let equipmentManager = EquipmentManager()
     
     private var updateTimer: Timer?
     
@@ -242,7 +243,7 @@ final class GameStateViewModel {
         }
     }
     
-    // MARK: - Job Management (NEW)
+    // MARK: - Job Management
     
     func startJob(jobType: Activity.JobType) {
         // Set the activity in primary focus
@@ -269,7 +270,7 @@ final class GameStateViewModel {
         refreshTrigger += 1
     }
     
-    // MARK: - Job Payment Info (NEW)
+    // MARK: - Job Payment Info
     
     var nextPaymentDate: Date? {
         gameState.nextPaymentDate
@@ -293,5 +294,69 @@ final class GameStateViewModel {
     
     var paymentHistory: [JobPayment] {
         gameState.paidPayments.sorted { $0.paidDate! > $1.paidDate! }
+    }
+    
+    // MARK: - Equipment Management (NEW)
+    
+    /// Purchase equipment from the shop
+    func purchaseEquipment(catalogItem: EquipmentCatalogItem) throws {
+        try equipmentManager.purchaseEquipment(
+            gameState: &gameState,
+            catalogItem: catalogItem
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Repair equipment
+    func repairEquipment(equipmentID: UUID) throws {
+        try equipmentManager.repairEquipment(
+            gameState: &gameState,
+            equipmentID: equipmentID
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Sell equipment
+    func sellEquipment(equipmentID: UUID) throws {
+        try equipmentManager.sellEquipment(
+            gameState: &gameState,
+            equipmentID: equipmentID
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Get player's equipment inventory
+    var equipmentInventory: [Equipment] {
+        gameState.equipmentInventory.sorted { $0.purchasedAt > $1.purchasedAt }
+    }
+    
+    /// Get usable equipment only
+    var usableEquipment: [Equipment] {
+        gameState.usableEquipment
+    }
+    
+    /// Get equipment that needs repair
+    var equipmentNeedingRepair: [Equipment] {
+        equipmentManager.getEquipmentNeedingRepair(gameState: gameState)
+    }
+    
+    /// Get total inventory value
+    var totalInventoryValue: Decimal {
+        equipmentManager.getTotalInventoryValue(gameState: gameState)
+    }
+    
+    /// Get equipment for specific type
+    func equipment(ofType type: Equipment.EquipmentType) -> [Equipment] {
+        gameState.equipment(ofType: type)
+    }
+    
+    /// Check if player owns equipment of type
+    func ownsEquipment(ofType type: Equipment.EquipmentType) -> Bool {
+        equipmentManager.ownsEquipment(gameState: gameState, ofType: type)
+    }
+    
+    /// Get best equipment bonus for a skill
+    func equipmentBonus(for skillType: Skill.SkillType) -> Double {
+        equipmentManager.getBestEquipmentBonus(gameState: gameState, for: skillType)
     }
 }
