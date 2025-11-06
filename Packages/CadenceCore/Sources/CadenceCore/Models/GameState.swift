@@ -1,18 +1,20 @@
 import Foundation
 
-public struct GameState: Codable, Sendable {
+public struct GameState: Sendable {
     public var player: Player
     public var wallet: Wallet
     public var skills: [Skill]
     public var primaryFocus: TimeSlot
     public var freeTime: TimeSlot
-    
-    // Music Loop
     public var songs: [Song]
     public var setlists: [Setlist]
     public var recordings: [Recording]
     public var releases: [Release]
     public var gigs: [Gig]
+    
+    // NEW: Job payment tracking
+    public var jobPayments: [JobPayment]
+    public var lastJobStartDate: Date?
     
     public init(
         player: Player,
@@ -20,11 +22,13 @@ public struct GameState: Codable, Sendable {
         skills: [Skill],
         primaryFocus: TimeSlot,
         freeTime: TimeSlot,
-        songs: [Song] = [],
-        setlists: [Setlist] = [],
-        recordings: [Recording] = [],
-        releases: [Release] = [],
-        gigs: [Gig] = []
+        songs: [Song],
+        setlists: [Setlist],
+        recordings: [Recording],
+        releases: [Release],
+        gigs: [Gig],
+        jobPayments: [JobPayment],
+        lastJobStartDate: Date?
     ) {
         self.player = player
         self.wallet = wallet
@@ -36,63 +40,70 @@ public struct GameState: Codable, Sendable {
         self.recordings = recordings
         self.releases = releases
         self.gigs = gigs
+        self.jobPayments = jobPayments
+        self.lastJobStartDate = lastJobStartDate
     }
-}
-
-// MARK: - Factory Method
-extension GameState {
-    public static func new(player: Player) -> GameState {
-        let wallet = Wallet(playerID: player.id)
-        
-        // Initialize basic skills at level 0
-        let skills = Skill.SkillType.allCases.map { skillType in
-            Skill(playerID: player.id, skillType: skillType)
+    
+    // MARK: - Job Payment Computed Properties
+    
+    /// All pending payments that haven't been processed yet
+    public var pendingPayments: [JobPayment] {
+        jobPayments.filter { $0.isPending }
+    }
+    
+    /// All payments that are due to be processed now
+    public var duePayments: [JobPayment] {
+        jobPayments.filter { $0.isDue }
+    }
+    
+    /// All payments that have already been processed
+    public var paidPayments: [JobPayment] {
+        jobPayments.filter { $0.isPaid }
+    }
+    
+    /// The current job type if player is employed, nil otherwise
+    public var currentJob: Activity.JobType? {
+        if case .job(let jobType) = primaryFocus.currentActivity {
+            return jobType
         }
-        
-        let primaryFocus = TimeSlot(
-            playerID: player.id,
-            slotType: .primaryFocus
-        )
-        
-        let freeTime = TimeSlot(
-            playerID: player.id,
-            slotType: .freeTime
-        )
-        
-        return GameState(
-            player: player,
-            wallet: wallet,
-            skills: skills,
-            primaryFocus: primaryFocus,
-            freeTime: freeTime
-        )
+        return nil
     }
-}
-
-// MARK: - Skill Lookup
-extension GameState {
+    
+    /// The date of the next scheduled payment
+    public var nextPaymentDate: Date? {
+        pendingPayments
+            .map { $0.scheduledDate }
+            .min()
+    }
+    
+    // MARK: - Job Payment Methods
+    
+    /// Add a new job payment to the list
+    public mutating func addJobPayment(_ payment: JobPayment) {
+        jobPayments.append(payment)
+    }
+    
+    /// Mark a payment as paid with the given date
+    public mutating func markPaymentAsPaid(_ paymentID: UUID, paidDate: Date = Date()) {
+        if let index = jobPayments.firstIndex(where: { $0.id == paymentID }) {
+            jobPayments[index].status = .paid
+            jobPayments[index].paidDate = paidDate
+        }
+    }
+    
+    // MARK: - Skill Helpers
+    
     public func skill(for type: Skill.SkillType) -> Skill? {
         skills.first { $0.skillType == type }
     }
     
-    public mutating func updateSkill(_ skill: Skill) {
-        if let index = skills.firstIndex(where: { $0.id == skill.id }) {
-            skills[index] = skill
+    public mutating func updateSkill(_ updatedSkill: Skill) {
+        if let index = skills.firstIndex(where: { $0.id == updatedSkill.id }) {
+            skills[index] = updatedSkill
         }
-    }
-}
-
-// MARK: - Song Management
-extension GameState {
-    public mutating func addSong(_ song: Song) {
-        songs.append(song)
     }
     
-    public mutating func updateSong(_ song: Song) {
-        if let index = songs.firstIndex(where: { $0.id == song.id }) {
-            songs[index] = song
-        }
-    }
+    // MARK: - Song Helpers
     
     public func song(for id: UUID) -> Song? {
         songs.first { $0.id == id }
@@ -101,36 +112,38 @@ extension GameState {
     public var unreleasedSongs: [Song] {
         songs.filter { !$0.isReleased }
     }
-}
-
-// MARK: - Setlist Management
-extension GameState {
-    public mutating func addSetlist(_ setlist: Setlist) {
-        setlists.append(setlist)
+    
+    /// Add a new song to the collection
+    public mutating func addSong(_ song: Song) {
+        songs.append(song)
     }
     
-    public mutating func updateSetlist(_ setlist: Setlist) {
-        if let index = setlists.firstIndex(where: { $0.id == setlist.id }) {
-            setlists[index] = setlist
+    /// Update an existing song
+    public mutating func updateSong(_ updatedSong: Song) {
+        if let index = songs.firstIndex(where: { $0.id == updatedSong.id }) {
+            songs[index] = updatedSong
         }
     }
+    
+    // MARK: - Setlist Helpers
     
     public func setlist(for id: UUID) -> Setlist? {
         setlists.first { $0.id == id }
     }
-}
-
-// MARK: - Recording Management
-extension GameState {
-    public mutating func addRecording(_ recording: Recording) {
-        recordings.append(recording)
+    
+    /// Add a new setlist to the collection
+    public mutating func addSetlist(_ setlist: Setlist) {
+        setlists.append(setlist)
     }
     
-    public mutating func updateRecording(_ recording: Recording) {
-        if let index = recordings.firstIndex(where: { $0.id == recording.id }) {
-            recordings[index] = recording
+    /// Update an existing setlist
+    public mutating func updateSetlist(_ updatedSetlist: Setlist) {
+        if let index = setlists.firstIndex(where: { $0.id == updatedSetlist.id }) {
+            setlists[index] = updatedSetlist
         }
     }
+    
+    // MARK: - Recording Helpers
     
     public func recording(for id: UUID) -> Recording? {
         recordings.first { $0.id == id }
@@ -139,36 +152,38 @@ extension GameState {
     public var unreleasedRecordings: [Recording] {
         recordings.filter { !$0.isReleased }
     }
-}
-
-// MARK: - Release Management
-extension GameState {
-    public mutating func addRelease(_ release: Release) {
-        releases.append(release)
+    
+    /// Add a new recording to the collection
+    public mutating func addRecording(_ recording: Recording) {
+        recordings.append(recording)
     }
     
-    public mutating func updateRelease(_ release: Release) {
-        if let index = releases.firstIndex(where: { $0.id == release.id }) {
-            releases[index] = release
+    /// Update an existing recording
+    public mutating func updateRecording(_ updatedRecording: Recording) {
+        if let index = recordings.firstIndex(where: { $0.id == updatedRecording.id }) {
+            recordings[index] = updatedRecording
         }
     }
+    
+    // MARK: - Release Helpers
     
     public func release(for id: UUID) -> Release? {
         releases.first { $0.id == id }
     }
-}
-
-// MARK: - Gig Management
-extension GameState {
-    public mutating func addGig(_ gig: Gig) {
-        gigs.append(gig)
+    
+    /// Add a new release to the collection
+    public mutating func addRelease(_ release: Release) {
+        releases.append(release)
     }
     
-    public mutating func updateGig(_ gig: Gig) {
-        if let index = gigs.firstIndex(where: { $0.id == gig.id }) {
-            gigs[index] = gig
+    /// Update an existing release
+    public mutating func updateRelease(_ updatedRelease: Release) {
+        if let index = releases.firstIndex(where: { $0.id == updatedRelease.id }) {
+            releases[index] = updatedRelease
         }
     }
+    
+    // MARK: - Gig Helpers
     
     public func gig(for id: UUID) -> Gig? {
         gigs.first { $0.id == id }
@@ -182,5 +197,38 @@ extension GameState {
     public var completedGigs: [Gig] {
         gigs.filter { $0.status == .completed }
             .sorted { $0.scheduledAt > $1.scheduledAt }
+    }
+    
+    /// Add a new gig to the collection
+    public mutating func addGig(_ gig: Gig) {
+        gigs.append(gig)
+    }
+    
+    /// Update an existing gig
+    public mutating func updateGig(_ updatedGig: Gig) {
+        if let index = gigs.firstIndex(where: { $0.id == updatedGig.id }) {
+            gigs[index] = updatedGig
+        }
+    }
+}
+
+// MARK: - Factory Method
+
+extension GameState {
+    public static func new(player: Player) -> GameState {
+        GameState(
+            player: player,
+            wallet: Wallet(playerID: player.id),
+            skills: Skill.SkillType.allCases.map { Skill(playerID: player.id, skillType: $0) },
+            primaryFocus: TimeSlot(playerID: player.id, slotType: .primaryFocus),
+            freeTime: TimeSlot(playerID: player.id, slotType: .freeTime),
+            songs: [],
+            setlists: [],
+            recordings: [],
+            releases: [],
+            gigs: [],
+            jobPayments: [],
+            lastJobStartDate: nil
+        )
     }
 }

@@ -19,7 +19,7 @@ struct WorkView: View {
                 VStack(spacing: 24) {
                     // Current Job Status
                     if let job = currentJob {
-                        CurrentJobView(jobType: job)
+                        CurrentJobView(jobType: job, viewModel: viewModel)
                     } else {
                         NoJobView()
                     }
@@ -32,6 +32,11 @@ struct WorkView: View {
                             showJobDetails = true
                         }
                     )
+                    
+                    // Payment History (NEW)
+                    if !viewModel.paymentHistory.isEmpty {
+                        PaymentHistoryView(viewModel: viewModel)
+                    }
                 }
                 .padding()
             }
@@ -54,6 +59,7 @@ struct WorkView: View {
 
 struct CurrentJobView: View {
     let jobType: Activity.JobType
+    let viewModel: GameStateViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -88,24 +94,49 @@ struct CurrentJobView: View {
                         .foregroundColor(.green)
                 }
                 
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.orange)
-                    Text("Next Payday")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(nextPayday())
-                        .font(.headline)
+                // NEW: Next Payday with real date
+                if let nextPayment = viewModel.nextPaymentDate {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.orange)
+                        Text("Next Payday")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(nextPayment.formatted(date: .abbreviated, time: .omitted))
+                                .font(.headline)
+                            if let days = viewModel.daysUntilNextPayment {
+                                Text("\(days) day\(days == 1 ? "" : "s")")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
                 }
                 
+                // NEW: Hours worked this week
                 HStack {
                     Image(systemName: "clock.fill")
                         .foregroundColor(.purple)
-                    Text("Time Commitment")
+                    Text("Hours This Week")
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text("Primary Focus")
+                    Text("\(Int(viewModel.hoursWorkedThisWeek))h")
                         .font(.headline)
+                }
+                
+                // NEW: Total earnings from current job
+                if viewModel.totalEarningsFromCurrentJob > 0 {
+                    HStack {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .foregroundColor(.green)
+                        Text("Total Earned")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("$\(formatDecimal(viewModel.totalEarningsFromCurrentJob))")
+                            .font(.headline)
+                            .foregroundColor(.green)
+                    }
                 }
             }
         }
@@ -113,18 +144,6 @@ struct CurrentJobView: View {
         .background(Color(uiColor: .systemBackground))
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 8, y: 2)
-    }
-    
-    private func nextPayday() -> String {
-        let calendar = Calendar.current
-        let today = Date()
-        let weekday = calendar.component(.weekday, from: today)
-        let daysUntilMonday = (9 - weekday) % 7
-        let nextMonday = calendar.date(byAdding: .day, value: daysUntilMonday == 0 ? 7 : daysUntilMonday, to: today)!
-        
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: nextMonday)
     }
     
     private func formatDecimal(_ value: Decimal) -> String {
@@ -383,20 +402,12 @@ struct JobDetailsSheet: View {
     }
     
     private func takeJob() {
-        var newSlot = viewModel.gameState.primaryFocus
-        newSlot.currentActivity = .job(type: jobType)
-        newSlot.startedAt = Date()
-        
-        viewModel.gameState.primaryFocus = newSlot
+        viewModel.startJob(jobType: jobType)
         isPresented = false
     }
     
     private func quitJob() {
-        var newSlot = viewModel.gameState.primaryFocus
-        newSlot.currentActivity = nil
-        newSlot.startedAt = nil
-        
-        viewModel.gameState.primaryFocus = newSlot
+        viewModel.quitJob()
         isPresented = false
     }
     
@@ -430,6 +441,89 @@ struct DetailRow: View {
             Text(value)
                 .font(.headline)
         }
+    }
+}
+
+// MARK: - Payment History View (NEW)
+
+struct PaymentHistoryView: View {
+    let viewModel: GameStateViewModel
+    @State private var showingAll = false
+    
+    var displayedPayments: [JobPayment] {
+        let payments = viewModel.paymentHistory
+        return showingAll ? payments : Array(payments.prefix(5))
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Payment History")
+                    .font(.headline)
+                
+                Spacer()
+                
+                if viewModel.paymentHistory.count > 5 {
+                    Button(showingAll ? "Show Less" : "Show All") {
+                        showingAll.toggle()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+            }
+            
+            VStack(spacing: 8) {
+                ForEach(displayedPayments) { payment in
+                    PaymentRow(payment: payment)
+                }
+            }
+        }
+        .padding()
+        .background(Color(uiColor: .systemBackground))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, y: 2)
+    }
+}
+
+struct PaymentRow: View {
+    let payment: JobPayment
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(payment.jobType.rawValue)
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                
+                if let paidDate = payment.paidDate {
+                    Text(paidDate.formatted(date: .abbreviated, time: .omitted))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+                
+                Text("+$\(formatDecimal(payment.amount))")
+                    .font(.headline)
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func formatDecimal(_ value: Decimal) -> String {
+        let nsDecimal = value as NSDecimalNumber
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: nsDecimal) ?? "0.00"
     }
 }
 

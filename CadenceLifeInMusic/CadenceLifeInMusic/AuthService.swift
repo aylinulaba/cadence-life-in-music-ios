@@ -60,7 +60,7 @@ final class AuthService {
         }
         
         // Create new player
-        print("📝 Creating new player...")
+        print("🆕 Creating new player...")
         
         let playerID = try await DatabaseService.shared.createPlayer(
             gameCenterID: gameCenterID,
@@ -97,6 +97,7 @@ final class AuthService {
         let recordings = try await DatabaseService.shared.fetchRecordings(playerID: playerID)
         let releases = try await DatabaseService.shared.fetchReleases(playerID: playerID)
         let gigs = try await DatabaseService.shared.fetchGigs(playerID: playerID)
+        let jobPayments = try await DatabaseService.shared.fetchJobPayments(playerID: playerID)  // NEW
         
         // Create time slots
         let primaryFocus = TimeSlot(
@@ -124,6 +125,24 @@ final class AuthService {
         gameState.recordings = recordings
         gameState.releases = releases
         gameState.gigs = gigs
+        gameState.jobPayments = jobPayments  // NEW
+        
+        // Calculate last job start date from payments if job is active (NEW)
+        if let currentJob = gameState.currentJob {
+            // Find the earliest payment for current job
+            let earliestPayment = jobPayments
+                .filter { $0.jobType == currentJob }
+                .min { $0.scheduledDate < $1.scheduledDate }
+            
+            if let earliest = earliestPayment {
+                // Job started 7 days before first payment
+                gameState.lastJobStartDate = Calendar.current.date(
+                    byAdding: .day,
+                    value: -7,
+                    to: earliest.scheduledDate
+                )
+            }
+        }
         
         print("✅ Player data loaded successfully")
         return gameState

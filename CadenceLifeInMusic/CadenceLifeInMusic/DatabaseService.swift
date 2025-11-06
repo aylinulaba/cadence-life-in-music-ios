@@ -311,6 +311,110 @@ final class DatabaseService {
         print("Fetching gigs...")
         return []
     }
+    
+    // MARK: - Job Payment Operations (NEW)
+    
+    func fetchJobPayments(playerID: UUID) async throws -> [JobPayment] {
+        print("Fetching job payments...")
+        
+        struct JobPaymentRow: Decodable {
+            let id: String
+            let player_id: String
+            let job_type: String
+            let amount: Double
+            let scheduled_date: String
+            let paid_date: String?
+            let status: String
+        }
+        
+        let rows: [JobPaymentRow] = try await client
+            .from("job_payments")
+            .select()
+            .eq("player_id", value: playerID.uuidString)
+            .execute()
+            .value
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        return rows.compactMap { row in
+            guard let id = UUID(uuidString: row.id),
+                  let playerUUID = UUID(uuidString: row.player_id),
+                  let jobType = Activity.JobType(rawValue: row.job_type),
+                  let scheduledDate = dateFormatter.date(from: row.scheduled_date),
+                  let status = JobPayment.PaymentStatus(rawValue: row.status) else {
+                return nil
+            }
+            
+            let paidDate = row.paid_date.flatMap { dateFormatter.date(from: $0) }
+            
+            return JobPayment(
+                id: id,
+                playerID: playerUUID,
+                jobType: jobType,
+                amount: Decimal(row.amount),
+                scheduledDate: scheduledDate,
+                paidDate: paidDate,
+                status: status
+            )
+        }
+    }
+    
+    func saveJobPayment(_ payment: JobPayment) async throws {
+        print("Saving job payment...")
+        
+        struct JobPaymentInsert: Encodable {
+            let id: String
+            let player_id: String
+            let job_type: String
+            let amount: Double
+            let scheduled_date: String
+            let paid_date: String?
+            let status: String
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        let insert = JobPaymentInsert(
+            id: payment.id.uuidString,
+            player_id: payment.playerID.uuidString,
+            job_type: payment.jobType.rawValue,
+            amount: NSDecimalNumber(decimal: payment.amount).doubleValue,
+            scheduled_date: dateFormatter.string(from: payment.scheduledDate),
+            paid_date: payment.paidDate.map { dateFormatter.string(from: $0) },
+            status: payment.status.rawValue
+        )
+        
+        try await client
+            .from("job_payments")
+            .upsert(insert)
+            .execute()
+        
+        print("Job payment saved")
+    }
+    
+    func updateJobPaymentStatus(paymentID: UUID, status: JobPayment.PaymentStatus, paidDate: Date?) async throws {
+        print("Updating job payment status...")
+        
+        struct JobPaymentUpdate: Encodable {
+            let status: String
+            let paid_date: String?
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        let update = JobPaymentUpdate(
+            status: status.rawValue,
+            paid_date: paidDate.map { dateFormatter.string(from: $0) }
+        )
+        
+        try await client
+            .from("job_payments")
+            .update(update)
+            .eq("id", value: paymentID.uuidString)
+            .execute()
+        
+        print("Job payment status updated")
+    }
 }
 
 // MARK: - Supporting Types

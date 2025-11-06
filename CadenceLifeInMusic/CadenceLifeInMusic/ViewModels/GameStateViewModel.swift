@@ -13,6 +13,7 @@ final class GameStateViewModel {
     private let recordingManager = RecordingManager()
     private let releaseManager = ReleaseManager()
     private let gigManager = GigManager()
+    private let jobPaymentManager = JobPaymentManager()
     
     private var updateTimer: Timer?
     
@@ -239,5 +240,58 @@ final class GameStateViewModel {
                 )
             }
         }
+    }
+    
+    // MARK: - Job Management (NEW)
+    
+    func startJob(jobType: Activity.JobType) {
+        // Set the activity in primary focus
+        gameState.primaryFocus.currentActivity = .job(type: jobType)
+        gameState.primaryFocus.startedAt = Date()
+        
+        // Initialize job payment schedule
+        jobPaymentManager.startJob(
+            gameState: &gameState,
+            jobType: jobType
+        )
+        
+        refreshTrigger += 1
+    }
+    
+    func quitJob() {
+        // Clear the primary focus activity
+        gameState.primaryFocus.currentActivity = nil
+        gameState.primaryFocus.startedAt = nil
+        
+        // Cancel pending payments
+        jobPaymentManager.quitJob(gameState: &gameState)
+        
+        refreshTrigger += 1
+    }
+    
+    // MARK: - Job Payment Info (NEW)
+    
+    var nextPaymentDate: Date? {
+        gameState.nextPaymentDate
+    }
+    
+    var daysUntilNextPayment: Int? {
+        jobPaymentManager.daysUntilNextPayment(gameState: gameState)
+    }
+    
+    var hoursWorkedThisWeek: Double {
+        jobPaymentManager.hoursWorkedThisWeek(gameState: gameState)
+    }
+    
+    var totalEarningsFromCurrentJob: Decimal {
+        jobPaymentManager.totalEarningsFromCurrentJob(gameState: gameState)
+    }
+    
+    var upcomingPayments: [JobPayment] {
+        gameState.pendingPayments.sorted { $0.scheduledDate < $1.scheduledDate }
+    }
+    
+    var paymentHistory: [JobPayment] {
+        gameState.paidPayments.sorted { $0.paidDate! > $1.paidDate! }
     }
 }

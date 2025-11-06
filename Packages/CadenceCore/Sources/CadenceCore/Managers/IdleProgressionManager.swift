@@ -1,6 +1,9 @@
 import Foundation
 
 public final class IdleProgressionManager: Sendable {
+    
+    private let jobPaymentManager = JobPaymentManager()
+    
     public init() {}
     
     public func calculateSkillXP(
@@ -44,11 +47,12 @@ public final class IdleProgressionManager: Sendable {
     }
     
     public func processIdleProgress(
-        gameState: inout GameState,
+        gameState: inout CadenceCore.GameState,
         currentTime: Date = Date()
     ) {
         let player = gameState.player
         
+        // Process Primary Focus activity
         if let activity = gameState.primaryFocus.currentActivity,
            let startedAt = gameState.primaryFocus.startedAt {
             let elapsedTime = currentTime.timeIntervalSince(startedAt)
@@ -79,6 +83,7 @@ public final class IdleProgressionManager: Sendable {
             }
         }
         
+        // Process Free Time activity
         if let activity = gameState.freeTime.currentActivity,
            let startedAt = gameState.freeTime.startedAt {
             let elapsedTime = currentTime.timeIntervalSince(startedAt)
@@ -108,6 +113,9 @@ public final class IdleProgressionManager: Sendable {
                 break
             }
         }
+        
+        // NEW: Process job payments
+        jobPaymentManager.processDuePayments(gameState: &gameState)
         
         gameState.player.lastSyncAt = currentTime
     }
