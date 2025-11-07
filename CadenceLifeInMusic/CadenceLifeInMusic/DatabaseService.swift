@@ -215,7 +215,7 @@ final class DatabaseService {
         )
     }
     
-    // MARK: - Update Player Data (NEW)
+    // MARK: - Update Player Data
     
     func updatePlayerHealth(playerID: UUID, health: Int) async throws {
         print("Updating player health...")
@@ -392,6 +392,7 @@ final class DatabaseService {
             .value
         
         let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         return rows.compactMap { row in
             guard let id = UUID(uuidString: row.id),
@@ -430,6 +431,7 @@ final class DatabaseService {
         }
         
         let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         let insert = JobPaymentInsert(
             id: payment.id.uuidString,
@@ -458,6 +460,7 @@ final class DatabaseService {
         }
         
         let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         let update = JobPaymentUpdate(
             status: status.rawValue,
@@ -497,6 +500,7 @@ final class DatabaseService {
             .value
         
         let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         return rows.compactMap { row in
             guard let id = UUID(uuidString: row.id),
@@ -535,6 +539,7 @@ final class DatabaseService {
         }
         
         let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
         let insert = EquipmentInsert(
             id: equipment.id.uuidString,
@@ -583,6 +588,162 @@ final class DatabaseService {
             .execute()
         
         print("Equipment deleted")
+    }
+    
+    // MARK: - Housing Operations
+    
+    func createHousing(
+        playerID: UUID,
+        housingType: String,
+        cityID: UUID
+    ) async throws {
+        print("🏠 Creating housing for player...")
+        
+        struct HousingInsert: Encodable {
+            let player_id: String
+            let housing_type: String
+            let city_id: String
+            let rented_at: String
+            let last_rent_payment: String
+            let rent_paid_until: String
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = Date()
+        let oneWeekLater = now.addingTimeInterval(7 * 24 * 3600)
+        
+        let insert = HousingInsert(
+            player_id: playerID.uuidString,
+            housing_type: housingType,
+            city_id: cityID.uuidString,
+            rented_at: dateFormatter.string(from: now),
+            last_rent_payment: dateFormatter.string(from: now),
+            rent_paid_until: dateFormatter.string(from: oneWeekLater)
+        )
+        
+        try await client
+            .from("housing")
+            .insert(insert)
+            .execute()
+        
+        print("✅ Housing created")
+    }
+    
+    func fetchHousing(playerID: UUID) async throws -> Housing? {
+        print("🏠 Fetching housing for player: \(playerID.uuidString)")
+        
+        struct HousingRow: Decodable {
+            let id: String
+            let player_id: String
+            let housing_type: String
+            let city_id: String
+            let rented_at: String
+            let last_rent_payment: String
+            let rent_paid_until: String
+        }
+        
+        do {
+            let rows: [HousingRow] = try await client
+                .from("housing")
+                .select()
+                .eq("player_id", value: playerID.uuidString)
+                .execute()
+                .value
+            
+            print("🏠 Housing rows returned: \(rows.count)")
+            
+            guard let row = rows.first else {
+                print("⚠️ No housing found for player")
+                return nil
+            }
+            
+            print("🏠 Housing row found - type: \(row.housing_type)")
+            
+            let dateFormatter = ISO8601DateFormatter()
+            dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            
+            guard let id = UUID(uuidString: row.id) else {
+                print("❌ Failed to parse housing ID: \(row.id)")
+                return nil
+            }
+            
+            guard let playerUUID = UUID(uuidString: row.player_id) else {
+                print("❌ Failed to parse player ID: \(row.player_id)")
+                return nil
+            }
+            
+            guard let cityID = UUID(uuidString: row.city_id) else {
+                print("❌ Failed to parse city ID: \(row.city_id)")
+                return nil
+            }
+            
+            guard let housingType = Housing.HousingType(rawValue: row.housing_type) else {
+                print("❌ Failed to parse housing type: \(row.housing_type)")
+                return nil
+            }
+            
+            guard let rentedAt = dateFormatter.date(from: row.rented_at) else {
+                print("❌ Failed to parse rented_at date: \(row.rented_at)")
+                return nil
+            }
+            
+            guard let lastRentPayment = dateFormatter.date(from: row.last_rent_payment) else {
+                print("❌ Failed to parse last_rent_payment date: \(row.last_rent_payment)")
+                return nil
+            }
+            
+            guard let rentPaidUntil = dateFormatter.date(from: row.rent_paid_until) else {
+                print("❌ Failed to parse rent_paid_until date: \(row.rent_paid_until)")
+                return nil
+            }
+            
+            let housing = Housing(
+                id: id,
+                playerID: playerUUID,
+                housingType: housingType,
+                cityID: cityID,
+                rentedAt: rentedAt,
+                lastRentPayment: lastRentPayment,
+                rentPaidUntil: rentPaidUntil
+            )
+            
+            print("✅ Housing loaded successfully: \(housing.housingType.displayName)")
+            return housing
+            
+        } catch {
+            print("❌ Error fetching housing: \(error)")
+            throw error
+        }
+    }
+    
+    func updateHousing(_ housing: Housing) async throws {
+        print("Updating housing...")
+        
+        struct HousingUpdate: Encodable {
+            let housing_type: String
+            let city_id: String
+            let last_rent_payment: String
+            let rent_paid_until: String
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        let update = HousingUpdate(
+            housing_type: housing.housingType.rawValue,
+            city_id: housing.cityID.uuidString,
+            last_rent_payment: dateFormatter.string(from: housing.lastRentPayment),
+            rent_paid_until: dateFormatter.string(from: housing.rentPaidUntil)
+        )
+        
+        try await client
+            .from("housing")
+            .update(update)
+            .eq("id", value: housing.id.uuidString)
+            .execute()
+        
+        print("Housing updated")
     }
 }
 

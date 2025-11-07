@@ -6,6 +6,7 @@ public final class IdleProgressionManager: Sendable {
     private let jobPaymentManager = JobPaymentManager()
     private let equipmentManager = EquipmentManager()
     private let healthMoodManager = HealthMoodManager()
+    private let housingManager = HousingManager()
     
     public init() {}
     
@@ -28,21 +29,26 @@ public final class IdleProgressionManager: Sendable {
         activity: Activity,
         elapsedTime: TimeInterval,
         currentHealth: Int,
-        currentMood: Int
+        currentMood: Int,
+        housingMultiplier: Double = 1.0
     ) -> (healthGain: Int, moodGain: Int) {
         guard activity.type == .rest else { return (0, 0) }
         
         let hours = elapsedTime / 3600.0
         
         // Use HealthMoodManager for more sophisticated calculations
-        let healthGain = healthMoodManager.calculateRestHealthRecovery(
+        let baseHealthGain = healthMoodManager.calculateRestHealthRecovery(
             hoursRested: hours,
             currentHealth: currentHealth
         )
-        let moodGain = healthMoodManager.calculateRestMoodBoost(
+        let baseMoodGain = healthMoodManager.calculateRestMoodBoost(
             hoursRested: hours,
             currentMood: currentMood
         )
+        
+        // NEW: Apply housing multiplier
+        let healthGain = Int(Double(baseHealthGain) * housingMultiplier)
+        let moodGain = Int(Double(baseMoodGain) * housingMultiplier)
         
         // Cap gains to not exceed 100
         let cappedHealthGain = min(healthGain, 100 - currentHealth)
@@ -67,6 +73,9 @@ public final class IdleProgressionManager: Sendable {
     ) {
         var player = gameState.player
         
+        // NEW: Get housing rest multiplier
+        let housingRestMultiplier = housingManager.getRestQualityMultiplier(gameState: gameState)
+        
         // Process Primary Focus activity
         if let activity = gameState.primaryFocus.currentActivity,
            let startedAt = gameState.primaryFocus.startedAt {
@@ -83,7 +92,7 @@ public final class IdleProgressionManager: Sendable {
                         for: skillType
                     )
                     
-                    // NEW: Get health/mood multiplier
+                    // Get health/mood multiplier
                     let healthMoodMultiplier = healthMoodManager.getXPMultiplier(
                         health: player.health,
                         mood: player.mood
@@ -109,7 +118,7 @@ public final class IdleProgressionManager: Sendable {
                         amount: 1
                     )
                     
-                    // NEW: Apply minor health/mood loss from extended practice
+                    // Apply minor health/mood loss from extended practice
                     let hours = elapsedTime / 3600.0
                     if hours > 4 {
                         player.adjustHealth(by: -Int((hours - 4) * 0.5))
@@ -118,17 +127,19 @@ public final class IdleProgressionManager: Sendable {
                 }
                 
             case .rest:
+                // NEW: Rest with housing multiplier
                 let recovery = calculateRecovery(
                     activity: activity,
                     elapsedTime: elapsedTime,
                     currentHealth: player.health,
-                    currentMood: player.mood
+                    currentMood: player.mood,
+                    housingMultiplier: housingRestMultiplier
                 )
                 player.adjustHealth(by: recovery.healthGain)
                 player.adjustMood(by: recovery.moodGain)
                 
             case .job:
-                // NEW: Apply overwork penalty if working too long
+                // Apply overwork penalty if working too long
                 let hours = elapsedTime / 3600.0
                 let healthLoss = healthMoodManager.calculateOverworkHealthLoss(hoursWorked: hours)
                 if healthLoss > 0 {
@@ -157,7 +168,7 @@ public final class IdleProgressionManager: Sendable {
                         for: skillType
                     )
                     
-                    // NEW: Get health/mood multiplier
+                    // Get health/mood multiplier
                     let healthMoodMultiplier = healthMoodManager.getXPMultiplier(
                         health: player.health,
                         mood: player.mood
@@ -183,7 +194,7 @@ public final class IdleProgressionManager: Sendable {
                         amount: 1
                     )
                     
-                    // NEW: Apply minor health/mood loss from extended practice
+                    // Apply minor health/mood loss from extended practice
                     let hours = elapsedTime / 3600.0
                     if hours > 4 {
                         player.adjustHealth(by: -Int((hours - 4) * 0.5))
@@ -192,11 +203,13 @@ public final class IdleProgressionManager: Sendable {
                 }
                 
             case .rest:
+                // NEW: Rest with housing multiplier
                 let recovery = calculateRecovery(
                     activity: activity,
                     elapsedTime: elapsedTime,
                     currentHealth: player.health,
-                    currentMood: player.mood
+                    currentMood: player.mood,
+                    housingMultiplier: housingRestMultiplier
                 )
                 player.adjustHealth(by: recovery.healthGain)
                 player.adjustMood(by: recovery.moodGain)
@@ -208,6 +221,9 @@ public final class IdleProgressionManager: Sendable {
         
         // Process job payments
         jobPaymentManager.processDuePayments(gameState: &gameState)
+        
+        // NEW: Process automatic rent
+        housingManager.processAutomaticRent(gameState: &gameState)
         
         // Update player state
         gameState.player = player

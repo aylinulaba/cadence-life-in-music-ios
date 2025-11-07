@@ -16,6 +16,7 @@ final class GameStateViewModel {
     private let jobPaymentManager = JobPaymentManager()
     private let equipmentManager = EquipmentManager()
     private let healthMoodManager = HealthMoodManager()
+    private let housingManager = HousingManager()
     
     private var updateTimer: Timer?
     
@@ -361,7 +362,7 @@ final class GameStateViewModel {
         equipmentManager.getBestEquipmentBonus(gameState: gameState, for: skillType)
     }
     
-    // MARK: - Health & Mood Management (NEW)
+    // MARK: - Health & Mood Management
     
     /// Get health status
     var healthStatus: Player.HealthStatus {
@@ -415,5 +416,99 @@ final class GameStateViewModel {
         player.rest(hours: hours)
         gameState.player = player
         refreshTrigger += 1
+    }
+    
+    // MARK: - Housing Management (NEW)
+    
+    /// Rent new housing
+    func rentHousing(housingType: Housing.HousingType, cityID: UUID) throws {
+        try housingManager.rentHousing(
+            gameState: &gameState,
+            housingType: housingType,
+            cityID: cityID
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Upgrade current housing
+    func upgradeHousing(newHousingType: Housing.HousingType) throws {
+        try housingManager.upgradeHousing(
+            gameState: &gameState,
+            newHousingType: newHousingType
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Downgrade current housing
+    func downgradeHousing(newHousingType: Housing.HousingType) throws {
+        try housingManager.downgradeHousing(
+            gameState: &gameState,
+            newHousingType: newHousingType
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Pay rent
+    func payRent(weeksCount: Int = 1) throws {
+        try housingManager.payRent(
+            gameState: &gameState,
+            weeksCount: weeksCount
+        )
+        refreshTrigger += 1
+    }
+    
+    /// Get current housing
+    var currentHousing: Housing? {
+        gameState.currentHousing
+    }
+    
+    /// Get rest quality multiplier from housing
+    var housingRestMultiplier: Double {
+        housingManager.getRestQualityMultiplier(gameState: gameState)
+    }
+    
+    /// Check if player can record at home
+    var canRecordAtHome: Bool {
+        housingManager.canRecordAtHome(gameState: gameState)
+    }
+    
+    /// Get home recording quality cap
+    var homeRecordingQualityCap: Int {
+        housingManager.getHomeRecordingQualityCap(gameState: gameState)
+    }
+    
+    /// Get storage slots from housing
+    var storageSlots: Int {
+        housingManager.getStorageSlots(gameState: gameState)
+    }
+    
+    /// Check if should warn about rent
+    var shouldWarnAboutRent: Bool {
+        housingManager.shouldWarnAboutRent(gameState: gameState)
+    }
+    
+    /// Get rent warning message
+    var rentWarningMessage: String? {
+        housingManager.getRentWarningMessage(gameState: gameState)
+    }
+    
+    /// Get weekly rent amount
+    var weeklyRent: Decimal? {
+        gameState.weeklyRent
+    }
+    
+    /// Check if rent is due soon
+    var isRentDueSoon: Bool {
+        gameState.isRentDueSoon
+    }
+    
+    /// Check if rent is overdue
+    var isRentOverdue: Bool {
+        gameState.isRentOverdue
+    }
+    
+    /// Check if at risk of eviction
+    var isAtRiskOfEviction: Bool {
+        gameState.isAtRiskOfEviction
     }
 }

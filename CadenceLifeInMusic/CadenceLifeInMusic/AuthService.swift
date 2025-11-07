@@ -79,6 +79,13 @@ final class AuthService {
             try await DatabaseService.shared.createSkill(playerID: playerID, skillType: skillType)
         }
         
+        // Create default housing (Studio in Los Angeles)
+        try await DatabaseService.shared.createHousing(
+            playerID: playerID,
+            housingType: "studio",
+            cityID: City.losAngeles.id
+        )
+        
         print("✅ New player created with full setup")
         return playerID
     }
@@ -98,7 +105,8 @@ final class AuthService {
         let releases = try await DatabaseService.shared.fetchReleases(playerID: playerID)
         let gigs = try await DatabaseService.shared.fetchGigs(playerID: playerID)
         let jobPayments = try await DatabaseService.shared.fetchJobPayments(playerID: playerID)
-        let equipment = try await DatabaseService.shared.fetchEquipment(playerID: playerID)  // NEW
+        let equipment = try await DatabaseService.shared.fetchEquipment(playerID: playerID)
+        let housing = try await DatabaseService.shared.fetchHousing(playerID: playerID)
         
         // Create time slots
         let primaryFocus = TimeSlot(
@@ -116,35 +124,22 @@ final class AuthService {
         )
         
         // Create GameState
-        var gameState = GameState.new(player: player)
-        gameState.wallet = wallet
-        gameState.skills = skills
-        gameState.primaryFocus = primaryFocus
-        gameState.freeTime = freeTime
-        gameState.songs = songs
-        gameState.setlists = setlists
-        gameState.recordings = recordings
-        gameState.releases = releases
-        gameState.gigs = gigs
-        gameState.jobPayments = jobPayments
-        gameState.equipmentInventory = equipment  // NEW
-        
-        // Calculate last job start date from payments if job is active
-        if let currentJob = gameState.currentJob {
-            // Find the earliest payment for current job
-            let earliestPayment = jobPayments
-                .filter { $0.jobType == currentJob }
-                .min { $0.scheduledDate < $1.scheduledDate }
-            
-            if let earliest = earliestPayment {
-                // Job started 7 days before first payment
-                gameState.lastJobStartDate = Calendar.current.date(
-                    byAdding: .day,
-                    value: -7,
-                    to: earliest.scheduledDate
-                )
-            }
-        }
+        let gameState = GameState(
+            player: player,
+            wallet: wallet,
+            skills: skills,
+            primaryFocus: primaryFocus,
+            freeTime: freeTime,
+            songs: songs,
+            setlists: setlists,
+            recordings: recordings,
+            releases: releases,
+            gigs: gigs,
+            jobPayments: jobPayments,
+            lastJobStartDate: nil,
+            equipmentInventory: equipment,
+            currentHousing: housing
+        )
         
         print("✅ Player data loaded successfully")
         return gameState

@@ -16,8 +16,11 @@ public struct GameState: Sendable {
     public var jobPayments: [JobPayment]
     public var lastJobStartDate: Date?
     
-    // NEW: Equipment inventory
+    // Equipment inventory
     public var equipmentInventory: [Equipment]
+    
+    // Housing (NEW)
+    public var currentHousing: Housing?
     
     public init(
         player: Player,
@@ -32,7 +35,8 @@ public struct GameState: Sendable {
         gigs: [Gig],
         jobPayments: [JobPayment],
         lastJobStartDate: Date?,
-        equipmentInventory: [Equipment]
+        equipmentInventory: [Equipment],
+        currentHousing: Housing?
     ) {
         self.player = player
         self.wallet = wallet
@@ -47,6 +51,7 @@ public struct GameState: Sendable {
         self.jobPayments = jobPayments
         self.lastJobStartDate = lastJobStartDate
         self.equipmentInventory = equipmentInventory
+        self.currentHousing = currentHousing
     }
     
     // MARK: - Job Payment Computed Properties
@@ -96,7 +101,7 @@ public struct GameState: Sendable {
         }
     }
     
-    // MARK: - Equipment Helpers (NEW)
+    // MARK: - Equipment Helpers
     
     /// Get equipment by ID
     public func equipment(for id: UUID) -> Equipment? {
@@ -135,6 +140,37 @@ public struct GameState: Sendable {
     /// Remove equipment from inventory
     public mutating func removeEquipment(_ equipmentID: UUID) {
         equipmentInventory.removeAll { $0.id == equipmentID }
+    }
+    
+    // MARK: - Housing Helpers (NEW)
+    
+    /// Get current city
+    public var currentCity: City? {
+        City.allCities.first { $0.id == player.currentCityID }
+    }
+    
+    /// Get weekly rent for current housing
+    public var weeklyRent: Decimal? {
+        guard let housing = currentHousing,
+              let city = currentCity else {
+            return nil
+        }
+        return housing.weeklyRent(in: city)
+    }
+    
+    /// Check if rent is due soon
+    public var isRentDueSoon: Bool {
+        currentHousing?.isRentDueSoon ?? false
+    }
+    
+    /// Check if rent is overdue
+    public var isRentOverdue: Bool {
+        currentHousing?.isRentOverdue ?? false
+    }
+    
+    /// Check if at risk of eviction
+    public var isAtRiskOfEviction: Bool {
+        currentHousing?.isAtRiskOfEviction ?? false
     }
     
     // MARK: - Skill Helpers
@@ -262,7 +298,14 @@ public struct GameState: Sendable {
 
 extension GameState {
     public static func new(player: Player) -> GameState {
-        GameState(
+        // Create default studio apartment in player's starting city
+        let defaultHousing = Housing(
+            playerID: player.id,
+            housingType: .studio,
+            cityID: player.currentCityID
+        )
+        
+        return GameState(
             player: player,
             wallet: Wallet(playerID: player.id),
             skills: Skill.SkillType.allCases.map { Skill(playerID: player.id, skillType: $0) },
@@ -275,7 +318,8 @@ extension GameState {
             gigs: [],
             jobPayments: [],
             lastJobStartDate: nil,
-            equipmentInventory: []
+            equipmentInventory: [],
+            currentHousing: defaultHousing
         )
     }
 }

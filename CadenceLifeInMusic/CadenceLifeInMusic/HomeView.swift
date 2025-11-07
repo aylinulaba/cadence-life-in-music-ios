@@ -26,23 +26,30 @@ struct HomeView: View {
                 }
                 .tag(2)
             
-            EquipmentShopView(viewModel: viewModel)
-                .tabItem {
-                    Label("Equipment", systemImage: "bag.fill")
-                }
-                .tag(3)
-            
             EconomyView(viewModel: viewModel)
                 .tabItem {
                     Label("Economy", systemImage: "dollarsign.circle")
                 }
+                .tag(3)
+            
+            EquipmentShopView(viewModel: viewModel)
+                .tabItem {
+                    Label("Equipment", systemImage: "cart.fill")
+                }
                 .tag(4)
+            
+            HousingView(viewModel: viewModel)
+                .tabItem {
+                    Label("Housing", systemImage: "house.fill")
+                }
+                .tag(5)
+                .badge(viewModel.shouldWarnAboutRent ? "!" : nil)
             
             SocialView()
                 .tabItem {
                     Label("Social", systemImage: "person.2.fill")
                 }
-                .tag(5)
+                .tag(6)
         }
     }
 }
