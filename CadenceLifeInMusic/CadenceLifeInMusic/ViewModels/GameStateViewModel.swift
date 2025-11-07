@@ -15,6 +15,7 @@ final class GameStateViewModel {
     private let gigManager = GigManager()
     private let jobPaymentManager = JobPaymentManager()
     private let equipmentManager = EquipmentManager()
+    private let healthMoodManager = HealthMoodManager()
     
     private var updateTimer: Timer?
     
@@ -296,7 +297,7 @@ final class GameStateViewModel {
         gameState.paidPayments.sorted { $0.paidDate! > $1.paidDate! }
     }
     
-    // MARK: - Equipment Management (NEW)
+    // MARK: - Equipment Management
     
     /// Purchase equipment from the shop
     func purchaseEquipment(catalogItem: EquipmentCatalogItem) throws {
@@ -358,5 +359,61 @@ final class GameStateViewModel {
     /// Get best equipment bonus for a skill
     func equipmentBonus(for skillType: Skill.SkillType) -> Double {
         equipmentManager.getBestEquipmentBonus(gameState: gameState, for: skillType)
+    }
+    
+    // MARK: - Health & Mood Management (NEW)
+    
+    /// Get health status
+    var healthStatus: Player.HealthStatus {
+        gameState.player.healthStatus
+    }
+    
+    /// Get mood status
+    var moodStatus: Player.MoodStatus {
+        gameState.player.moodStatus
+    }
+    
+    /// Check if player needs health warning
+    var needsHealthWarning: Bool {
+        healthMoodManager.shouldWarnLowHealth(health: gameState.player.health)
+    }
+    
+    /// Check if player needs mood warning
+    var needsMoodWarning: Bool {
+        healthMoodManager.shouldWarnLowMood(mood: gameState.player.mood)
+    }
+    
+    /// Get health warning message if applicable
+    var healthWarningMessage: String? {
+        healthMoodManager.getHealthWarningMessage(health: gameState.player.health)
+    }
+    
+    /// Get mood warning message if applicable
+    var moodWarningMessage: String? {
+        healthMoodManager.getMoodWarningMessage(mood: gameState.player.mood)
+    }
+    
+    /// Get recommended action based on health/mood
+    var recommendedAction: String {
+        healthMoodManager.getRecommendedAction(
+            health: gameState.player.health,
+            mood: gameState.player.mood
+        )
+    }
+    
+    /// Get XP multiplier based on current health/mood
+    var xpMultiplier: Double {
+        healthMoodManager.getXPMultiplier(
+            health: gameState.player.health,
+            mood: gameState.player.mood
+        )
+    }
+    
+    /// Manually trigger rest (for debugging/testing)
+    func rest(hours: Double) {
+        var player = gameState.player
+        player.rest(hours: hours)
+        gameState.player = player
+        refreshTrigger += 1
     }
 }

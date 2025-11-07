@@ -1,6 +1,9 @@
 import Foundation
 
 public final class GigManager: Sendable {
+    
+    private let healthMoodManager = HealthMoodManager()
+    
     public init() {}
     
     /// Book a gig at a venue
@@ -79,6 +82,7 @@ public final class GigManager: Sendable {
         health: Int,
         mood: Int
     ) -> Int {
+        // Base calculation
         // Setlist quality (50% weight)
         let setlistComponent = Double(setlistQuality) * 0.5
         
@@ -91,9 +95,17 @@ public final class GigManager: Sendable {
         // Mood (10% weight)
         let moodComponent = Double(mood) * 0.1
         
-        let total = setlistComponent + skillComponent + healthComponent + moodComponent
+        let baseQuality = setlistComponent + skillComponent + healthComponent + moodComponent
         
-        return Int(max(0, min(100, total)))
+        // NEW: Apply health/mood performance modifier
+        let healthMoodModifier = healthMoodManager.getPerformanceQualityModifier(
+            health: health,
+            mood: mood
+        )
+        
+        let finalQuality = baseQuality * healthMoodModifier
+        
+        return Int(max(0, min(100, finalQuality)))
     }
     
     /// Execute a gig (called when scheduled time arrives)
@@ -119,7 +131,7 @@ public final class GigManager: Sendable {
             ticketPrice: gig.ticketPrice
         )
         
-        // Calculate performance quality
+        // Calculate performance quality with health/mood impact
         let performanceSkill = gameState.skill(for: .performance)?.currentLevel ?? 0
         let performanceQuality = calculatePerformanceQuality(
             setlistQuality: setlist.quality,
@@ -163,12 +175,35 @@ public final class GigManager: Sendable {
             gameState.updateSkill(skill)
         }
         
-        // Mood boost for good performance
-        if performanceQuality >= 60 {
-            gameState.player.mood = min(100, gameState.player.mood + 10)
-        } else if performanceQuality < 40 {
-            gameState.player.mood = max(0, gameState.player.mood - 10)
+        // NEW: Apply health/mood changes from gig
+        var updatedPlayer = gameState.player
+        
+        // Performing is physically demanding
+        updatedPlayer.adjustHealth(by: -5)
+        
+        // Mood changes based on performance quality
+        let moodChange = healthMoodManager.calculateSuccessfulGigMoodBoost(
+            attendance: attendance,
+            quality: performanceQuality
+        )
+        
+        if performanceQuality >= 70 {
+            // Great performance - big mood boost
+            updatedPlayer.adjustMood(by: moodChange)
+        } else if performanceQuality >= 50 {
+            // Decent performance - small mood boost
+            updatedPlayer.adjustMood(by: moodChange / 2)
+        } else {
+            // Poor performance - mood loss
+            let expectedAttendance = venue.capacity / 2
+            let moodLoss = healthMoodManager.calculateFailedGigMoodLoss(
+                expectedAttendance: expectedAttendance,
+                actualAttendance: attendance
+            )
+            updatedPlayer.adjustMood(by: -moodLoss)
         }
+        
+        gameState.player = updatedPlayer
     }
     
     public enum GigError: Error, LocalizedError {

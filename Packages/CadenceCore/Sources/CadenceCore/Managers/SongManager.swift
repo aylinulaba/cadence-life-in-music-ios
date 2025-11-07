@@ -1,6 +1,9 @@
 import Foundation
 
 public final class SongManager: Sendable {
+    
+    private let healthMoodManager = HealthMoodManager()
+    
     public init() {}
     
     /// Calculate song quality based on player skills and mood
@@ -21,9 +24,13 @@ public final class SongManager: Sendable {
         // Random variance (10% weight, ±10 points)
         let randomVariance = Double.random(in: -10...10) * 0.1
         
-        let totalQuality = songwritingComponent + instrumentComponent + moodComponent + randomVariance
+        let baseQuality = songwritingComponent + instrumentComponent + moodComponent + randomVariance
         
-        return Int(max(0, min(100, totalQuality)))
+        // NEW: Apply mood modifier for enhanced creativity effect
+        let moodModifier = healthMoodManager.getSongQualityModifier(mood: playerMood)
+        let finalQuality = baseQuality * moodModifier
+        
+        return Int(max(0, min(100, finalQuality)))
     }
     
     /// Create a new song and grant XP
@@ -67,5 +74,10 @@ public final class SongManager: Sendable {
             instrumentSkillObj.addXP(instrumentXP)
             gameState.updateSkill(instrumentSkillObj)
         }
+        
+        // NEW: Slight mood boost from creative activity
+        var updatedPlayer = gameState.player
+        updatedPlayer.adjustMood(by: 2)
+        gameState.player = updatedPlayer
     }
 }

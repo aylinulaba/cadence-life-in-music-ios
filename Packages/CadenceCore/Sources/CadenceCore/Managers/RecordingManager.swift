@@ -1,6 +1,9 @@
 import Foundation
 
 public final class RecordingManager: Sendable {
+    
+    private let healthMoodManager = HealthMoodManager()
+    
     public init() {}
     
     /// Calculate recording quality
@@ -8,7 +11,9 @@ public final class RecordingManager: Sendable {
         songQuality: Int,
         performanceSkill: Int,
         productionSkill: Int,
-        studioTier: Recording.StudioTier
+        studioTier: Recording.StudioTier,
+        playerHealth: Int,
+        playerMood: Int
     ) -> Int {
         // Song quality (40% weight)
         let songComponent = Double(songQuality) * 0.4
@@ -22,10 +27,18 @@ public final class RecordingManager: Sendable {
         // Studio tier bonus (10% weight)
         let studioBonus = Double(studioTier.qualityCap) * 0.1
         
-        let totalQuality = songComponent + performanceComponent + productionComponent + studioBonus
+        let baseQuality = songComponent + performanceComponent + productionComponent + studioBonus
+        
+        // NEW: Apply health and mood modifiers
+        let healthMoodModifier = healthMoodManager.getRecordingQualityModifier(
+            health: playerHealth,
+            mood: playerMood
+        )
+        
+        let modifiedQuality = baseQuality * healthMoodModifier
         
         // Cap at studio tier maximum
-        return Int(min(Double(studioTier.qualityCap), max(0, totalQuality)))
+        return Int(min(Double(studioTier.qualityCap), max(0, modifiedQuality)))
     }
     
     /// Record a song
@@ -54,12 +67,14 @@ public final class RecordingManager: Sendable {
         let performanceSkill = gameState.skill(for: .performance)?.currentLevel ?? 0
         let productionSkill = gameState.skill(for: .production)?.currentLevel ?? 0
         
-        // Calculate recording quality
+        // Calculate recording quality with health/mood impact
         let quality = calculateRecordingQuality(
             songQuality: song.quality,
             performanceSkill: performanceSkill,
             productionSkill: productionSkill,
-            studioTier: studioTier
+            studioTier: studioTier,
+            playerHealth: gameState.player.health,
+            playerMood: gameState.player.mood
         )
         
         // Create recording
@@ -83,6 +98,23 @@ public final class RecordingManager: Sendable {
             skill.addXP(xpGain)
             gameState.updateSkill(skill)
         }
+        
+        // NEW: Apply health/mood changes from recording session
+        var updatedPlayer = gameState.player
+        
+        // Long sessions are tiring
+        if hours > 4 {
+            updatedPlayer.adjustHealth(by: -(hours - 4))
+        }
+        
+        // Good quality recording boosts mood
+        if quality >= 70 {
+            updatedPlayer.adjustMood(by: 5)
+        } else if quality < 40 {
+            updatedPlayer.adjustMood(by: -3)
+        }
+        
+        gameState.player = updatedPlayer
     }
     
     public enum RecordingError: Error, LocalizedError {

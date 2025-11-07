@@ -5,6 +5,7 @@ public final class IdleProgressionManager: Sendable {
     
     private let jobPaymentManager = JobPaymentManager()
     private let equipmentManager = EquipmentManager()
+    private let healthMoodManager = HealthMoodManager()
     
     public init() {}
     
@@ -32,10 +33,22 @@ public final class IdleProgressionManager: Sendable {
         guard activity.type == .rest else { return (0, 0) }
         
         let hours = elapsedTime / 3600.0
-        let healthGain = min(Int(hours * 10), 100 - currentHealth)
-        let moodGain = min(Int(hours * 5), 100 - currentMood)
         
-        return (healthGain, moodGain)
+        // Use HealthMoodManager for more sophisticated calculations
+        let healthGain = healthMoodManager.calculateRestHealthRecovery(
+            hoursRested: hours,
+            currentHealth: currentHealth
+        )
+        let moodGain = healthMoodManager.calculateRestMoodBoost(
+            hoursRested: hours,
+            currentMood: currentMood
+        )
+        
+        // Cap gains to not exceed 100
+        let cappedHealthGain = min(healthGain, 100 - currentHealth)
+        let cappedMoodGain = min(moodGain, 100 - currentMood)
+        
+        return (cappedHealthGain, cappedMoodGain)
     }
     
     public func calculatePassiveDecay(
@@ -52,7 +65,7 @@ public final class IdleProgressionManager: Sendable {
         gameState: inout CadenceCore.GameState,
         currentTime: Date = Date()
     ) {
-        let player = gameState.player
+        var player = gameState.player
         
         // Process Primary Focus activity
         if let activity = gameState.primaryFocus.currentActivity,
@@ -64,28 +77,46 @@ public final class IdleProgressionManager: Sendable {
                 if let skillType = extractSkillType(from: activity),
                    var skill = gameState.skill(for: skillType) {
                     
-                    // NEW: Get equipment bonus for this skill
+                    // Get equipment bonus for this skill
                     let equipmentBonus = equipmentManager.getBestEquipmentBonus(
                         gameState: gameState,
                         for: skillType
                     )
                     
-                    let xpGain = calculateSkillXP(
+                    // NEW: Get health/mood multiplier
+                    let healthMoodMultiplier = healthMoodManager.getXPMultiplier(
+                        health: player.health,
+                        mood: player.mood
+                    )
+                    
+                    // Calculate XP with all multipliers
+                    let baseXP = calculateSkillXP(
                         activity: activity,
                         elapsedTime: elapsedTime,
                         playerMood: player.mood,
                         equipmentBonus: equipmentBonus
                     )
-                    skill.addXP(xpGain)
+                    
+                    let finalXP = Int(Double(baseXP) * healthMoodMultiplier)
+                    
+                    skill.addXP(finalXP)
                     gameState.updateSkill(skill)
                     
-                    // NEW: Degrade equipment after practice
+                    // Degrade equipment after practice
                     equipmentManager.degradeEquipmentAfterUse(
                         gameState: &gameState,
                         equipmentType: skillType.equipmentType,
                         amount: 1
                     )
+                    
+                    // NEW: Apply minor health/mood loss from extended practice
+                    let hours = elapsedTime / 3600.0
+                    if hours > 4 {
+                        player.adjustHealth(by: -Int((hours - 4) * 0.5))
+                        player.adjustMood(by: -Int((hours - 4) * 0.25))
+                    }
                 }
+                
             case .rest:
                 let recovery = calculateRecovery(
                     activity: activity,
@@ -93,8 +124,18 @@ public final class IdleProgressionManager: Sendable {
                     currentHealth: player.health,
                     currentMood: player.mood
                 )
-                gameState.player.health = min(100, player.health + recovery.healthGain)
-                gameState.player.mood = min(100, player.mood + recovery.moodGain)
+                player.adjustHealth(by: recovery.healthGain)
+                player.adjustMood(by: recovery.moodGain)
+                
+            case .job:
+                // NEW: Apply overwork penalty if working too long
+                let hours = elapsedTime / 3600.0
+                let healthLoss = healthMoodManager.calculateOverworkHealthLoss(hoursWorked: hours)
+                if healthLoss > 0 {
+                    player.adjustHealth(by: -healthLoss)
+                    player.adjustMood(by: -Int(Double(healthLoss) * 0.5))
+                }
+                
             default:
                 break
             }
@@ -110,28 +151,46 @@ public final class IdleProgressionManager: Sendable {
                 if let skillType = extractSkillType(from: activity),
                    var skill = gameState.skill(for: skillType) {
                     
-                    // NEW: Get equipment bonus for this skill
+                    // Get equipment bonus for this skill
                     let equipmentBonus = equipmentManager.getBestEquipmentBonus(
                         gameState: gameState,
                         for: skillType
                     )
                     
-                    let xpGain = calculateSkillXP(
+                    // NEW: Get health/mood multiplier
+                    let healthMoodMultiplier = healthMoodManager.getXPMultiplier(
+                        health: player.health,
+                        mood: player.mood
+                    )
+                    
+                    // Calculate XP with all multipliers
+                    let baseXP = calculateSkillXP(
                         activity: activity,
                         elapsedTime: elapsedTime,
                         playerMood: player.mood,
                         equipmentBonus: equipmentBonus
                     )
-                    skill.addXP(xpGain)
+                    
+                    let finalXP = Int(Double(baseXP) * healthMoodMultiplier)
+                    
+                    skill.addXP(finalXP)
                     gameState.updateSkill(skill)
                     
-                    // NEW: Degrade equipment after practice
+                    // Degrade equipment after practice
                     equipmentManager.degradeEquipmentAfterUse(
                         gameState: &gameState,
                         equipmentType: skillType.equipmentType,
                         amount: 1
                     )
+                    
+                    // NEW: Apply minor health/mood loss from extended practice
+                    let hours = elapsedTime / 3600.0
+                    if hours > 4 {
+                        player.adjustHealth(by: -Int((hours - 4) * 0.5))
+                        player.adjustMood(by: -Int((hours - 4) * 0.25))
+                    }
                 }
+                
             case .rest:
                 let recovery = calculateRecovery(
                     activity: activity,
@@ -139,8 +198,9 @@ public final class IdleProgressionManager: Sendable {
                     currentHealth: player.health,
                     currentMood: player.mood
                 )
-                gameState.player.health = min(100, player.health + recovery.healthGain)
-                gameState.player.mood = min(100, player.mood + recovery.moodGain)
+                player.adjustHealth(by: recovery.healthGain)
+                player.adjustMood(by: recovery.moodGain)
+                
             default:
                 break
             }
@@ -149,6 +209,8 @@ public final class IdleProgressionManager: Sendable {
         // Process job payments
         jobPaymentManager.processDuePayments(gameState: &gameState)
         
+        // Update player state
+        gameState.player = player
         gameState.player.lastSyncAt = currentTime
     }
     

@@ -215,6 +215,63 @@ final class DatabaseService {
         )
     }
     
+    // MARK: - Update Player Data (NEW)
+    
+    func updatePlayerHealth(playerID: UUID, health: Int) async throws {
+        print("Updating player health...")
+        
+        struct HealthUpdate: Encodable {
+            let health: Int
+        }
+        
+        let update = HealthUpdate(health: health)
+        
+        try await client
+            .from("players")
+            .update(update)
+            .eq("id", value: playerID.uuidString)
+            .execute()
+        
+        print("Player health updated")
+    }
+    
+    func updatePlayerMood(playerID: UUID, mood: Int) async throws {
+        print("Updating player mood...")
+        
+        struct MoodUpdate: Encodable {
+            let mood: Int
+        }
+        
+        let update = MoodUpdate(mood: mood)
+        
+        try await client
+            .from("players")
+            .update(update)
+            .eq("id", value: playerID.uuidString)
+            .execute()
+        
+        print("Player mood updated")
+    }
+    
+    func updatePlayerHealthAndMood(playerID: UUID, health: Int, mood: Int) async throws {
+        print("Updating player health and mood...")
+        
+        struct HealthMoodUpdate: Encodable {
+            let health: Int
+            let mood: Int
+        }
+        
+        let update = HealthMoodUpdate(health: health, mood: mood)
+        
+        try await client
+            .from("players")
+            .update(update)
+            .eq("id", value: playerID.uuidString)
+            .execute()
+        
+        print("Player health and mood updated")
+    }
+    
     func fetchWallet(playerID: UUID) async throws -> Wallet {
         print("Fetching wallet...")
         
@@ -416,7 +473,7 @@ final class DatabaseService {
         print("Job payment status updated")
     }
     
-    // MARK: - Equipment Operations (NEW)
+    // MARK: - Equipment Operations
     
     func fetchEquipment(playerID: UUID) async throws -> [Equipment] {
         print("Fetching equipment...")
